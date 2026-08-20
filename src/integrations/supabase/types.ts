@@ -14,13 +14,166 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      call_signals: {
+        Row: {
+          call_id: string
+          created_at: string
+          id: string
+          kind: string
+          payload: Json
+          sender_id: string
+        }
+        Insert: {
+          call_id: string
+          created_at?: string
+          id?: string
+          kind: string
+          payload: Json
+          sender_id: string
+        }
+        Update: {
+          call_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          payload?: Json
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_signals_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calls: {
+        Row: {
+          callee_id: string
+          caller_id: string
+          created_at: string
+          ended_at: string | null
+          id: string
+          status: string
+        }
+        Insert: {
+          callee_id: string
+          caller_id: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          status?: string
+        }
+        Update: {
+          callee_id?: string
+          caller_id?: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      contacts: {
+        Row: {
+          contact_id: string
+          created_at: string
+          id: string
+          owner_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          id?: string
+          owner_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          id?: string
+          owner_id?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          read_at: string | null
+          recipient_id: string
+          sender_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          recipient_id: string
+          sender_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          recipient_id?: string
+          sender_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          talkloop_number: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          talkloop_number: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: string
+          last_name?: string
+          talkloop_number?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_profiles_public: {
+        Args: { _ids: string[] }
+        Returns: {
+          first_name: string
+          id: string
+          last_name: string
+          talkloop_number: string
+        }[]
+      }
+      lookup_by_number: {
+        Args: { _number: string }
+        Returns: {
+          first_name: string
+          id: string
+          last_name: string
+          talkloop_number: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
