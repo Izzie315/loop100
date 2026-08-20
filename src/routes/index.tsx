@@ -38,7 +38,7 @@ export const Route = createFileRoute("/")({
 type Tab = "keypad" | "messages" | "contacts";
 
 function Index() {
-  const { user, profile, loading, signOut } = useAuth();
+  const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
