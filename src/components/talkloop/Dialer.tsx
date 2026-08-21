@@ -49,7 +49,7 @@ export function Dialer({ onSaved }: { onSaved: () => void }) {
     const found = await lookup();
     setBusy(false);
     if (!found) {
-      toast.error("No TalkLoop user has that number.");
+      toast.error("No TalkLoop account has that number.");
       return;
     }
     setMatch(found);
@@ -62,7 +62,7 @@ export function Dialer({ onSaved }: { onSaved: () => void }) {
     const found = match ?? (await lookup());
     if (!found) {
       setBusy(false);
-      toast.error("No TalkLoop user has that number.");
+      toast.error("No TalkLoop account has that number.");
       return;
     }
     if (found.id === account.id) {
