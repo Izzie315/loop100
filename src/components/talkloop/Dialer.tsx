@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Delete, Phone, UserPlus } from "lucide-react";
+import { Delete, Phone, UserPlus as AddContactIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -117,7 +117,7 @@ export function Dialer({ onSaved }: { onSaved: () => void }) {
           disabled={digits.length !== 10 || busy}
           aria-label="Save to contacts"
         >
-          <UserPlus className="h-5 w-5" />
+          <AddContactIcon className="h-5 w-5" />
         </Button>
 
         <Button

@@ -81,7 +81,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "TalkLoop" },
-      { name: "description", content: "Real-time calls and messaging on your own TalkLoop number." },
+      { name: "description", content: "Live calls and private notes on your own TalkLoop number." },
       { name: "author", content: "TalkLoop" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

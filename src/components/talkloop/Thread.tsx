@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { SendHorizonal } from "lucide-react";
+import { SendHorizonal as DeliverIcon } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -140,7 +140,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
           className="h-11 w-11 shrink-0 rounded-full"
           aria-label="Deliver note"
         >
-          <SendHorizonal className="h-4 w-4" />
+          <DeliverIcon className="h-4 w-4" />
         </Button>
       </form>
     </div>

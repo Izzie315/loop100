@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { Grid3x3, LogOut, NotebookPen, Users } from "lucide-react";
+import { Grid3x3, LogOut, NotebookPen, Users as GroupIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -194,7 +194,7 @@ function TalkLoopApp() {
   const tabs: { id: Tab; label: string; icon: typeof Grid3x3 }[] = [
     { id: "keypad", label: "Keypad", icon: Grid3x3 },
     { id: "notes", label: "Notes", icon: NotebookPen },
-    { id: "contacts", label: "Contacts", icon: Users },
+    { id: "contacts", label: "Contacts", icon: GroupIcon },
   ];
 
   return (

@@ -1,4 +1,4 @@
-import { NotebookPen, Phone, Trash2, Users } from "lucide-react";
+import { NotebookPen, Phone, Trash2, Users as GroupIcon } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,7 +33,7 @@ export function ContactsList({
   if (contacts.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 py-16 text-center">
-        <Users className="h-8 w-8 text-muted-foreground" />
+        <GroupIcon className="h-8 w-8 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">
           No contacts yet. Dial a TalkLoop number and tap the add icon to save it.
         </p>
