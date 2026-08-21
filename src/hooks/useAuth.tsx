@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { Session, User } from "@supabase/supabase-js";
+import type { Session, User as Account } from "@supabase/supabase-js";
 
 import { supabase } from "@/integrations/supabase/client";
 
@@ -12,7 +12,7 @@ export type Profile = {
 };
 
 type AuthValue = {
-  user: User | null;
+  account: Account | null;
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
@@ -24,20 +24,20 @@ const AuthContext = createContext<AuthValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [account, setAccount] = useState<Account | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
-      setUser(nextSession?.user ?? null);
+      setAccount(nextSession?.user ?? null);
       if (!nextSession) setProfile(null);
     });
 
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
-      setUser(data.session?.user ?? null);
+      setAccount(data.session?.user ?? null);
       setLoading(false);
     });
 
@@ -45,13 +45,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!account) return;
     let cancelled = false;
     setLoading(true);
     void supabase
       .from("profiles")
       .select("id, email, first_name, last_name, talkloop_number")
-      .eq("id", user.id)
+      .eq("id", account.id)
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled) return;
@@ -61,14 +61,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [account]);
 
   const refreshProfile = async () => {
-    if (!user) return;
+    if (!account) return;
     const { data } = await supabase
       .from("profiles")
       .select("id, email, first_name, last_name, talkloop_number")
-      .eq("id", user.id)
+      .eq("id", account.id)
       .maybeSingle();
     setProfile((data as Profile | null) ?? null);
   };
@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, refreshProfile, signOut }}>
+    <AuthContext.Provider value={{ account, session, profile, loading, refreshProfile, signOut }}>
       {children}
     </AuthContext.Provider>
   );
