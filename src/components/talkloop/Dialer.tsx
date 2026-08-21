@@ -24,7 +24,7 @@ const KEYS = [
 ];
 
 export function Dialer({ onSaved }: { onSaved: () => void }) {
-  const { user } = useAuth();
+  const { account } = useAuth();
   const { startCall } = useCall();
   const [value, setValue] = useState("");
   const [match, setMatch] = useState<PublicProfile | null>(null);
@@ -57,7 +57,7 @@ export function Dialer({ onSaved }: { onSaved: () => void }) {
   };
 
   const saveContact = async () => {
-    if (!user || digits.length !== 10) return;
+    if (!account || digits.length !== 10) return;
     setBusy(true);
     const found = match ?? (await lookup());
     if (!found) {
@@ -65,14 +65,14 @@ export function Dialer({ onSaved }: { onSaved: () => void }) {
       toast.error("No TalkLoop user has that number.");
       return;
     }
-    if (found.id === user.id) {
+    if (found.id === account.id) {
       setBusy(false);
       toast.error("That's your own number.");
       return;
     }
     const { error } = await supabase
       .from("contacts")
-      .insert({ owner_id: user.id, contact_id: found.id });
+      .insert({ owner_id: account.id, contact_id: found.id });
     setBusy(false);
     if (error) toast.error("Already in your contacts.");
     else {
