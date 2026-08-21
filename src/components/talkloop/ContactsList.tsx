@@ -1,4 +1,4 @@
-import { MessageSquare, Phone, Trash2, Users } from "lucide-react";
+import { NotebookPen, Phone, Trash2, Users } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,18 +9,18 @@ import { fullName, initialsOf, type PublicProfile } from "@/lib/talkloop";
 export function ContactsList({
   contacts,
   onChanged,
-  onMessage,
+  onNote,
 }: {
   contacts: PublicProfile[];
   onChanged: () => void;
-  onMessage: (peer: PublicProfile) => void;
+  onNote: (party: PublicProfile) => void;
 }) {
-  const { user } = useAuth();
+  const { account } = useAuth();
   const { startCall } = useCall();
 
   const remove = async (id: string) => {
-    if (!user) return;
-    await supabase.from("contacts").delete().eq("owner_id", user.id).eq("contact_id", id);
+    if (!account) return;
+    await supabase.from("contacts").delete().eq("owner_id", account.id).eq("contact_id", id);
     onChanged();
   };
 
@@ -50,10 +50,7 @@ export function ContactsList({
             <h3 className="mb-2 px-1 font-mono text-xs tracking-[0.3em] text-primary">{letter}</h3>
             <ul className="space-y-2">
               {sections[letter]!.map((c) => (
-                <li
-                  key={c.id}
-                  className="panel flex items-center gap-3 p-3"
-                >
+                <li key={c.id} className="panel flex items-center gap-3 p-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">
                     {initialsOf(c)}
                   </div>
@@ -65,10 +62,10 @@ export function ContactsList({
                     size="icon"
                     variant="ghost"
                     className="h-9 w-9 rounded-full"
-                    onClick={() => onMessage(c)}
-                    aria-label={`Message ${fullName(c)}`}
+                    onClick={() => onNote(c)}
+                    aria-label={`Leave a note for ${fullName(c)}`}
                   >
-                    <MessageSquare className="h-4 w-4" />
+                    <NotebookPen className="h-4 w-4" />
                   </Button>
                   <Button
                     size="icon"

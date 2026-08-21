@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Mic, MicOff, MessageSquare, Phone, PhoneOff, X } from "lucide-react";
+import { Mic, MicOff, NotebookPen, Phone, PhoneOff, X } from "lucide-react";
 
 import { useCall } from "@/hooks/useCall";
 import { Button } from "@/components/ui/button";
@@ -7,10 +7,10 @@ import { Thread } from "@/components/talkloop/Thread";
 import { durationLabel, fullName, initialsOf } from "@/lib/talkloop";
 
 export function CallOverlay() {
-  const { phase, peer, muted, seconds, acceptCall, declineCall, hangUp, toggleMute } = useCall();
-  const [texting, setTexting] = useState(false);
+  const { phase, party, muted, seconds, acceptCall, declineCall, hangUp, toggleMute } = useCall();
+  const [noting, setNoting] = useState(false);
 
-  if (phase === "idle" || !peer) return null;
+  if (phase === "idle" || !party) return null;
 
   const statusLabel =
     phase === "dialing"
@@ -29,24 +29,24 @@ export function CallOverlay() {
             phase === "active" ? "" : "pulse-ring"
           }`}
         >
-          {initialsOf(peer)}
+          {initialsOf(party)}
         </div>
         <div>
-          <h2 className="text-2xl font-semibold">{fullName(peer)}</h2>
-          <p className="mt-1 font-mono text-sm text-muted-foreground">{peer.talkloop_number}</p>
+          <h2 className="text-2xl font-semibold">{fullName(party)}</h2>
+          <p className="mt-1 font-mono text-sm text-muted-foreground">{party.talkloop_number}</p>
           <p className="mt-3 font-mono text-sm tracking-[0.2em] text-primary">{statusLabel}</p>
         </div>
       </div>
 
-      {texting && phase === "active" && (
+      {noting && phase === "active" && (
         <div className="panel mx-4 mb-4 flex h-80 flex-col p-3">
           <div className="mb-1 flex items-center justify-between">
-            <p className="text-xs tracking-[0.2em] text-muted-foreground">IN-CALL TEXT</p>
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setTexting(false)}>
+            <p className="text-xs tracking-[0.2em] text-muted-foreground">IN-CALL NOTES</p>
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setNoting(false)}>
               <X className="h-4 w-4" />
             </Button>
           </div>
-          <Thread peer={peer} />
+          <Thread party={party} />
         </div>
       )}
 
@@ -96,11 +96,11 @@ export function CallOverlay() {
               size="icon"
               variant="secondary"
               className="h-14 w-14 rounded-full"
-              onClick={() => setTexting((t) => !t)}
+              onClick={() => setNoting((n) => !n)}
               disabled={phase !== "active"}
-              aria-label="Text during call"
+              aria-label="Notes during call"
             >
-              <MessageSquare className="h-5 w-5" />
+              <NotebookPen className="h-5 w-5" />
             </Button>
           </>
         )}
