@@ -52,7 +52,7 @@ function AuthPage() {
     if (mode === "signin") {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       setBusy(false);
-      if (error) toast.error(error.message ?? "Sign-in failed.");
+      if (error) toast.error("Could not sign in. Check your details.");
       else void navigate({ to: "/" });
       return;
     }
@@ -83,13 +83,14 @@ function AuthPage() {
 
     if (error) {
       setBusy(false);
-      toast.error(error.message ?? "Sign-in failed.");
+      toast.error("Could not create your account.");
       return;
     }
 
-    if (data.session && data.user) {
+    const newAccount = data.user;
+    if (data.session && newAccount) {
       const { error: profileError } = await supabase.from("profiles").insert({
-        id: data.user.id,
+        id: newAccount.id,
         email,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
