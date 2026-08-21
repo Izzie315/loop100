@@ -18,11 +18,11 @@ export type CallPhase = "idle" | "dialing" | "incoming" | "active" | "ending";
 
 type CallValue = {
   phase: CallPhase;
-  peer: PublicProfile | null;
+  party: PublicProfile | null;
   callId: string | null;
   muted: boolean;
   seconds: number;
-  startCall: (peer: PublicProfile) => Promise<void>;
+  startCall: (party: PublicProfile) => Promise<void>;
   acceptCall: () => Promise<void>;
   declineCall: () => Promise<void>;
   hangUp: () => Promise<void>;
@@ -36,14 +36,14 @@ const RTC_CONFIG: RTCConfiguration = {
 };
 
 export function CallProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { account } = useAuth();
   const [phase, setPhase] = useState<CallPhase>("idle");
-  const [peer, setPeer] = useState<PublicProfile | null>(null);
+  const [party, setParty] = useState<PublicProfile | null>(null);
   const [callId, setCallId] = useState<string | null>(null);
   const [muted, setMuted] = useState(false);
   const [seconds, setSeconds] = useState(0);
 
-  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const linkRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const pendingIce = useRef<RTCIceCandidateInit[]>([]);
@@ -56,42 +56,42 @@ export function CallProvider({ children }: { children: ReactNode }) {
   };
 
   const cleanup = useCallback(() => {
-    pcRef.current?.close();
-    pcRef.current = null;
+    linkRef.current?.close();
+    linkRef.current = null;
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     localStreamRef.current = null;
     if (audioRef.current) audioRef.current.srcObject = null;
     pendingIce.current = [];
     roleRef.current = null;
     setActiveCall(null);
-    setPeer(null);
+    setParty(null);
     setMuted(false);
     setSeconds(0);
     setPhase("idle");
   }, []);
 
-  const sendSignal = useCallback(
+  const relaySignal = useCallback(
     async (kind: string, payload: unknown) => {
-      if (!user || !callIdRef.current) return;
+      if (!account || !callIdRef.current) return;
       await supabase.from("call_signals").insert({
         call_id: callIdRef.current,
-        sender_id: user.id,
+        origin_id: account.id,
         kind,
         payload: payload as never,
       });
     },
-    [user],
+    [account],
   );
 
-  const buildPeerConnection = useCallback(async () => {
+  const buildLink = useCallback(async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     localStreamRef.current = stream;
-    const pc = new RTCPeerConnection(RTC_CONFIG);
-    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-    pc.onicecandidate = (event) => {
-      if (event.candidate) void sendSignal("ice", event.candidate.toJSON());
+    const link = new RTCPeerConnection(RTC_CONFIG);
+    stream.getTracks().forEach((track) => link.addTrack(track, stream));
+    link.onicecandidate = (event) => {
+      if (event.candidate) void relaySignal("ice", event.candidate.toJSON());
     };
-    pc.ontrack = (event) => {
+    link.ontrack = (event) => {
       if (!audioRef.current) {
         const el = document.createElement("audio");
         el.autoplay = true;
@@ -101,24 +101,24 @@ export function CallProvider({ children }: { children: ReactNode }) {
       audioRef.current.srcObject = event.streams[0] ?? null;
       void audioRef.current.play().catch(() => undefined);
     };
-    pcRef.current = pc;
-    return pc;
-  }, [sendSignal]);
+    linkRef.current = link;
+    return link;
+  }, [relaySignal]);
 
   const startCall = useCallback(
     async (target: PublicProfile) => {
-      if (!user || phase !== "idle") return;
-      if (target.id === user.id) {
+      if (!account || phase !== "idle") return;
+      if (target.id === account.id) {
         toast.error("You can't dial your own TalkLoop number.");
         return;
       }
-      setPeer(target);
+      setParty(target);
       setPhase("dialing");
       roleRef.current = "caller";
 
       const { data, error } = await supabase
         .from("calls")
-        .insert({ caller_id: user.id, callee_id: target.id, status: "ringing" })
+        .insert({ caller_id: account.id, callee_id: target.id, status: "ringing" })
         .select("id")
         .single();
 
@@ -130,24 +130,27 @@ export function CallProvider({ children }: { children: ReactNode }) {
       setActiveCall(data.id);
 
       try {
-        const pc = await buildPeerConnection();
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        await sendSignal("offer", { sdp: offer.sdp, type: offer.type });
+        const link = await buildLink();
+        const offer = await link.createOffer();
+        await link.setLocalDescription(offer);
+        await relaySignal("offer", { sdp: offer.sdp, type: offer.type });
       } catch {
         toast.error("Microphone access is required to make a call.");
-        await supabase.from("calls").update({ status: "ended", ended_at: new Date().toISOString() }).eq("id", data.id);
+        await supabase
+          .from("calls")
+          .update({ status: "ended", ended_at: new Date().toISOString() })
+          .eq("id", data.id);
         cleanup();
       }
     },
-    [user, phase, buildPeerConnection, sendSignal, cleanup],
+    [account, phase, buildLink, relaySignal, cleanup],
   );
 
   const acceptCall = useCallback(async () => {
-    if (!user || !callIdRef.current) return;
+    if (!account || !callIdRef.current) return;
     roleRef.current = "callee";
     try {
-      const pc = await buildPeerConnection();
+      const link = await buildLink();
       const { data: offers } = await supabase
         .from("call_signals")
         .select("payload")
@@ -162,19 +165,19 @@ export function CallProvider({ children }: { children: ReactNode }) {
         cleanup();
         return;
       }
-      await pc.setRemoteDescription(new RTCSessionDescription(offer));
-      for (const candidate of pendingIce.current) await pc.addIceCandidate(candidate);
+      await link.setRemoteDescription(new RTCSessionDescription(offer));
+      for (const candidate of pendingIce.current) await link.addIceCandidate(candidate);
       pendingIce.current = [];
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      await sendSignal("answer", { sdp: answer.sdp, type: answer.type });
+      const answer = await link.createAnswer();
+      await link.setLocalDescription(answer);
+      await relaySignal("answer", { sdp: answer.sdp, type: answer.type });
       await supabase.from("calls").update({ status: "active" }).eq("id", callIdRef.current);
       setPhase("active");
     } catch {
       toast.error("Microphone access is required to answer.");
       cleanup();
     }
-  }, [user, buildPeerConnection, sendSignal, cleanup]);
+  }, [account, buildLink, relaySignal, cleanup]);
 
   const endWithStatus = useCallback(
     async (status: "declined" | "ended") => {
@@ -204,12 +207,12 @@ export function CallProvider({ children }: { children: ReactNode }) {
 
   /* Incoming calls + call status changes */
   useEffect(() => {
-    if (!user) return;
+    if (!account) return;
     const channel = supabase
-      .channel(`tl-calls-${user.id}`)
+      .channel(`tl-calls-${account.id}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "calls", filter: `callee_id=eq.${user.id}` },
+        { event: "INSERT", schema: "public", table: "calls", filter: `callee_id=eq.${account.id}` },
         async (payload) => {
           const row = payload.new as { id: string; caller_id: string; status: string };
           if (row.status !== "ringing" || callIdRef.current) return;
@@ -217,54 +220,55 @@ export function CallProvider({ children }: { children: ReactNode }) {
           const caller = (data as PublicProfile[] | null)?.[0];
           if (!caller) return;
           setActiveCall(row.id);
-          setPeer(caller);
+          setParty(caller);
           setPhase("incoming");
         },
       )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "calls" },
-        (payload) => {
-          const row = payload.new as { id: string; status: string };
-          if (row.id !== callIdRef.current) return;
-          if (row.status === "active" && roleRef.current === "caller") setPhase("active");
-          if (row.status === "declined" || row.status === "ended") {
-            if (row.status === "declined" && roleRef.current === "caller") {
-              toast("Call declined");
-            }
-            cleanup();
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "calls" }, (payload) => {
+        const row = payload.new as { id: string; status: string };
+        if (row.id !== callIdRef.current) return;
+        if (row.status === "active" && roleRef.current === "caller") setPhase("active");
+        if (row.status === "declined" || row.status === "ended") {
+          if (row.status === "declined" && roleRef.current === "caller") {
+            toast("Call declined");
           }
-        },
-      )
+          cleanup();
+        }
+      })
       .subscribe();
 
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [user, cleanup]);
+  }, [account, cleanup]);
 
   /* Signaling for the active call */
   useEffect(() => {
-    if (!user || !callId) return;
+    if (!account || !callId) return;
     const channel = supabase
       .channel(`tl-signals-${callId}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "call_signals", filter: `call_id=eq.${callId}` },
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "call_signals",
+          filter: `call_id=eq.${callId}`,
+        },
         async (payload) => {
-          const row = payload.new as { sender_id: string; kind: string; payload: unknown };
-          if (row.sender_id === user.id) return;
-          const pc = pcRef.current;
-          if (row.kind === "answer" && pc) {
-            await pc.setRemoteDescription(
+          const row = payload.new as { origin_id: string; kind: string; payload: unknown };
+          if (row.origin_id === account.id) return;
+          const link = linkRef.current;
+          if (row.kind === "answer" && link) {
+            await link.setRemoteDescription(
               new RTCSessionDescription(row.payload as RTCSessionDescriptionInit),
             );
-            for (const candidate of pendingIce.current) await pc.addIceCandidate(candidate);
+            for (const candidate of pendingIce.current) await link.addIceCandidate(candidate);
             pendingIce.current = [];
           }
           if (row.kind === "ice") {
             const candidate = row.payload as RTCIceCandidateInit;
-            if (pc?.remoteDescription) await pc.addIceCandidate(candidate);
+            if (link?.remoteDescription) await link.addIceCandidate(candidate);
             else pendingIce.current.push(candidate);
           }
         },
@@ -274,7 +278,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [user, callId]);
+  }, [account, callId]);
 
   /* Call timer */
   useEffect(() => {
@@ -285,7 +289,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     return () => {
-      pcRef.current?.close();
+      linkRef.current?.close();
       localStreamRef.current?.getTracks().forEach((t) => t.stop());
       audioRef.current?.remove();
     };
@@ -294,7 +298,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       phase,
-      peer,
+      party,
       callId,
       muted,
       seconds,
@@ -304,7 +308,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
       hangUp,
       toggleMute,
     }),
-    [phase, peer, callId, muted, seconds, startCall, acceptCall, declineCall, hangUp, toggleMute],
+    [phase, party, callId, muted, seconds, startCall, acceptCall, declineCall, hangUp, toggleMute],
   );
 
   return <CallContext.Provider value={value}>{children}</CallContext.Provider>;
