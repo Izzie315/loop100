@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { Grid3x3, LogOut, MessageSquare, Users } from "lucide-react";
+import { Grid3x3, LogOut, NotebookPen, Users as GroupIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialer } from "@/components/talkloop/Dialer";
 import { ContactsList } from "@/components/talkloop/ContactsList";
-import { MessagesPanel } from "@/components/talkloop/MessagesPanel";
+import { NotesPanel } from "@/components/talkloop/NotesPanel";
 import { CallOverlay } from "@/components/talkloop/CallOverlay";
 import { cn } from "@/lib/utils";
 import { digitsOf, formatNumber, isValidNumber, type PublicProfile } from "@/lib/talkloop";
@@ -18,32 +18,32 @@ import { digitsOf, formatNumber, isValidNumber, type PublicProfile } from "@/lib
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "TalkLoop — Real-Time Calls & Messaging" },
+      { title: "TalkLoop — Live Calls on Your Own Number" },
       {
         name: "description",
         content:
-          "TalkLoop gives every person their own number for instant voice calls, in-call texting, and messages that wait when someone can't pick up.",
+          "TalkLoop gives every person their own number for instant voice calls, in-call notes, and notes that wait when someone can't pick up.",
       },
-      { property: "og:title", content: "TalkLoop — Real-Time Calls & Messaging" },
+      { property: "og:title", content: "TalkLoop — Live Calls on Your Own Number" },
       {
         property: "og:description",
         content:
-          "Dial any TalkLoop number, text during a call, and keep an alphabetical contacts list.",
+          "Dial any TalkLoop number, leave notes during a call, and keep an alphabetical contacts list.",
       },
     ],
   }),
   component: Index,
 });
 
-type Tab = "keypad" | "messages" | "contacts";
+type Tab = "keypad" | "notes" | "contacts";
 
 function Index() {
-  const { user, profile, loading } = useAuth();
+  const { account, profile, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && !user) void navigate({ to: "/auth" });
-  }, [user, loading, navigate]);
+    if (!loading && !account) void navigate({ to: "/auth" });
+  }, [account, loading, navigate]);
 
   if (loading) {
     return (
@@ -53,14 +53,14 @@ function Index() {
     );
   }
 
-  if (!user) return null;
+  if (!account) return null;
   if (!profile) return <Onboarding />;
 
   return <TalkLoopApp />;
 }
 
 function Onboarding() {
-  const { user, refreshProfile } = useAuth();
+  const { account, refreshProfile } = useAuth();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [number, setNumber] = useState("");
@@ -85,7 +85,7 @@ function Onboarding() {
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || busy) return;
+    if (!account || busy) return;
     if (!firstName.trim() || !lastName.trim() || !isValidNumber(number)) {
       toast.error("Enter your name and a valid 10-digit TalkLoop number.");
       return;
@@ -98,8 +98,8 @@ function Onboarding() {
       return;
     }
     const { error } = await supabase.from("profiles").insert({
-      id: user.id,
-      email: user.email ?? "",
+      id: account.id,
+      email: account.email ?? "",
       first_name: firstName.trim(),
       last_name: lastName.trim(),
       talkloop_number: formatNumber(number),
@@ -166,7 +166,7 @@ function TalkLoopApp() {
   const { profile, signOut } = useAuth();
   const [tab, setTab] = useState<Tab>("keypad");
   const [contacts, setContacts] = useState<PublicProfile[]>([]);
-  const [openPeer, setOpenPeer] = useState<PublicProfile | null>(null);
+  const [openParty, setOpenParty] = useState<PublicProfile | null>(null);
 
   const loadContacts = useCallback(async () => {
     if (!profile) return;
@@ -193,8 +193,8 @@ function TalkLoopApp() {
 
   const tabs: { id: Tab; label: string; icon: typeof Grid3x3 }[] = [
     { id: "keypad", label: "Keypad", icon: Grid3x3 },
-    { id: "messages", label: "Messages", icon: MessageSquare },
-    { id: "contacts", label: "Contacts", icon: Users },
+    { id: "notes", label: "Notes", icon: NotebookPen },
+    { id: "contacts", label: "Contacts", icon: GroupIcon },
   ];
 
   return (
@@ -218,14 +218,14 @@ function TalkLoopApp() {
 
       <section className="flex min-h-0 flex-1 flex-col">
         {tab === "keypad" && <Dialer onSaved={() => void loadContacts()} />}
-        {tab === "messages" && <MessagesPanel openPeer={openPeer} setOpenPeer={setOpenPeer} />}
+        {tab === "notes" && <NotesPanel openParty={openParty} setOpenParty={setOpenParty} />}
         {tab === "contacts" && (
           <ContactsList
             contacts={contacts}
             onChanged={() => void loadContacts()}
-            onMessage={(peer) => {
-              setOpenPeer(peer);
-              setTab("messages");
+            onNote={(party: PublicProfile) => {
+              setOpenParty(party);
+              setTab("notes");
             }}
           />
         )}
@@ -239,7 +239,7 @@ function TalkLoopApp() {
               type="button"
               onClick={() => {
                 setTab(id);
-                if (id !== "messages") setOpenPeer(null);
+                if (id !== "notes") setOpenParty(null);
               }}
               className={cn(
                 "flex flex-1 flex-col items-center gap-1 rounded-lg py-2 text-[11px] transition-colors",

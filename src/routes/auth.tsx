@@ -13,16 +13,16 @@ import { digitsOf, formatNumber, isValidNumber } from "@/lib/talkloop";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in to TalkLoop — Calls & Messaging" },
+      { title: "Sign in to TalkLoop — Calls & Notes" },
       {
         name: "description",
         content:
-          "Create your TalkLoop account, claim your own TalkLoop number, and start calling and texting instantly.",
+          "Create your TalkLoop account, claim your own TalkLoop number, and start calling instantly.",
       },
       { property: "og:title", content: "Sign in to TalkLoop" },
       {
         property: "og:description",
-        content: "Claim your TalkLoop number and start calling and texting instantly.",
+        content: "Claim your TalkLoop number and start calling instantly.",
       },
     ],
   }),
@@ -31,7 +31,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { account, loading } = useAuth();
   const [mode, setMode] = useState<"signup" | "signin">("signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,8 +41,8 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) void navigate({ to: "/" });
-  }, [user, loading, navigate]);
+    if (!loading && account) void navigate({ to: "/" });
+  }, [account, loading, navigate]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +52,7 @@ function AuthPage() {
     if (mode === "signin") {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       setBusy(false);
-      if (error) toast.error(error.message);
+      if (error) toast.error("Could not sign in. Check your details.");
       else void navigate({ to: "/" });
       return;
     }
@@ -83,13 +83,14 @@ function AuthPage() {
 
     if (error) {
       setBusy(false);
-      toast.error(error.message);
+      toast.error("Could not create your account.");
       return;
     }
 
-    if (data.session && data.user) {
+    const newAccount = data.user;
+    if (data.session && newAccount) {
       const { error: profileError } = await supabase.from("profiles").insert({
-        id: data.user.id,
+        id: newAccount.id,
         email,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
