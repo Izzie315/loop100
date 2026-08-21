@@ -20,24 +20,24 @@ export type Database = {
           created_at: string
           id: string
           kind: string
+          origin_id: string
           payload: Json
-          sender_id: string
         }
         Insert: {
           call_id: string
           created_at?: string
           id?: string
           kind: string
+          origin_id: string
           payload: Json
-          sender_id: string
         }
         Update: {
           call_id?: string
           created_at?: string
           id?: string
           kind?: string
+          origin_id?: string
           payload?: Json
-          sender_id?: string
         }
         Relationships: [
           {
@@ -97,30 +97,30 @@ export type Database = {
         }
         Relationships: []
       }
-      messages: {
+      notes: {
         Row: {
+          addressee_id: string
+          author_id: string
           body: string
           created_at: string
           id: string
           read_at: string | null
-          recipient_id: string
-          sender_id: string
         }
         Insert: {
+          addressee_id: string
+          author_id: string
           body: string
           created_at?: string
           id?: string
           read_at?: string | null
-          recipient_id: string
-          sender_id: string
         }
         Update: {
+          addressee_id?: string
+          author_id?: string
           body?: string
           created_at?: string
           id?: string
           read_at?: string | null
-          recipient_id?: string
-          sender_id?: string
         }
         Relationships: []
       }
