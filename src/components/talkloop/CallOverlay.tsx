@@ -39,7 +39,8 @@ export function CallOverlay() {
       </div>
 
       {noting && phase === "active" && (
-        <div className="panel mx-4 mb-4 flex h-80 flex-col p-3">
+        <div className="panel mx-4 mb-4 flex h-80 flex-col p-3 md:mx-auto md:w-full md:max-w-lg">
+
           <div className="mb-1 flex items-center justify-between">
             <p className="text-xs tracking-[0.2em] text-muted-foreground">IN-CALL NOTES</p>
             <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setNoting(false)}>
