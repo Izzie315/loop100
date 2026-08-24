@@ -198,25 +198,55 @@ function TalkLoopApp() {
   ];
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6">
-      <header className="mb-5 flex items-center justify-between">
-        <div>
-          <p className="font-mono text-[10px] tracking-[0.45em] text-primary">TALKLOOP</p>
-          <h1 className="text-lg font-semibold">{profile?.first_name}</h1>
-          <p className="font-mono text-xs text-muted-foreground">{profile?.talkloop_number}</p>
-        </div>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-9 w-9 rounded-full text-muted-foreground"
-          onClick={() => void signOut()}
-          aria-label="Sign out"
-        >
-          <LogOut className="h-4 w-4" />
-        </Button>
-      </header>
+    <main className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6 md:max-w-5xl md:flex-row md:gap-8 md:px-8 md:pb-8 md:pt-10">
+      {/* Desktop sidebar / mobile header */}
+      <aside className="mb-5 md:mb-0 md:w-60 md:shrink-0">
+        <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 md:block">
+          <div className="min-w-0">
+            <p className="font-mono text-[10px] tracking-[0.45em] text-primary">TALKLOOP</p>
+            <h1 className="truncate text-lg font-semibold">{profile?.first_name}</h1>
+            <p className="truncate font-mono text-xs text-muted-foreground">
+              {profile?.talkloop_number}
+            </p>
+          </div>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-9 w-9 shrink-0 rounded-full text-muted-foreground md:mt-4 md:w-auto md:gap-2 md:px-3"
+            onClick={() => void signOut()}
+            aria-label="Sign out"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </header>
 
-      <section className="flex min-h-0 flex-1 flex-col">
+        <nav className="mt-6 hidden md:block">
+          <ul className="space-y-1">
+            {tabs.map(({ id, label, icon: Icon }) => (
+              <li key={id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTab(id);
+                    if (id !== "notes") setOpenParty(null);
+                  }}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
+                    tab === id
+                      ? "bg-accent text-primary"
+                      : "text-muted-foreground hover:bg-secondary",
+                  )}
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
+                  {label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </aside>
+
+      <section className="flex min-h-0 flex-1 flex-col md:panel md:min-h-[70vh] md:p-6">
         {tab === "keypad" && <Dialer onSaved={() => void loadContacts()} />}
         {tab === "notes" && <NotesPanel openParty={openParty} setOpenParty={setOpenParty} />}
         {tab === "contacts" && (
@@ -231,7 +261,7 @@ function TalkLoopApp() {
         )}
       </section>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur md:hidden">
         <div className="mx-auto flex max-w-md items-center justify-around px-4 py-2">
           {tabs.map(({ id, label, icon: Icon }) => (
             <button
@@ -257,3 +287,4 @@ function TalkLoopApp() {
     </main>
   );
 }
+
