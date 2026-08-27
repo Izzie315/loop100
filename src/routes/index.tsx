@@ -248,9 +248,7 @@ function TalkLoopApp() {
 
       <section className="flex min-h-0 flex-1 flex-col md:panel md:min-h-[70vh] md:p-6">
         {tab === "keypad" && <Dialer onSaved={() => void loadContacts()} />}
-        {tab === "notes" && (
-          <NotesPanel contacts={contacts} openParty={openParty} setOpenParty={setOpenParty} />
-        )}
+        {tab === "notes" && <NotesPanel openParty={openParty} setOpenParty={setOpenParty} />}
         {tab === "contacts" && (
           <ContactsList
             contacts={contacts}

@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
@@ -97,91 +97,6 @@ export type Database = {
         }
         Relationships: []
       }
-      group_members: {
-        Row: {
-          created_at: string
-          group_id: string
-          id: string
-          member_id: string
-        }
-        Insert: {
-          created_at?: string
-          group_id: string
-          id?: string
-          member_id: string
-        }
-        Update: {
-          created_at?: string
-          group_id?: string
-          id?: string
-          member_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "group_members_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "groups"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      group_notes: {
-        Row: {
-          author_id: string
-          body: string
-          created_at: string
-          group_id: string
-          id: string
-        }
-        Insert: {
-          author_id: string
-          body: string
-          created_at?: string
-          group_id: string
-          id?: string
-        }
-        Update: {
-          author_id?: string
-          body?: string
-          created_at?: string
-          group_id?: string
-          id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "group_notes_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "groups"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      groups: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          owner_id: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          owner_id: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          owner_id?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       notes: {
         Row: {
           addressee_id: string
@@ -249,10 +164,6 @@ export type Database = {
           last_name: string
           talkloop_number: string
         }[]
-      }
-      is_group_member: {
-        Args: { _group_id: string; _member_id: string }
-        Returns: boolean
       }
       lookup_by_number: {
         Args: { _number: string }
