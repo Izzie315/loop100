@@ -29,7 +29,7 @@ export function NotesPanel({
     if (!account) return;
     const { data } = await supabase
       .from("notes")
-      .select("id, author_id, addressee_id, body, created_at")
+      .select("id, author_id, addressee_id, body, created_at, media_kind")
       .order("created_at", { ascending: false });
 
     const rows = (data ?? []) as {
@@ -37,12 +37,16 @@ export function NotesPanel({
       addressee_id: string;
       body: string;
       created_at: string;
+      media_kind: string | null;
     }[];
 
     const latest = new Map<string, { body: string; created_at: string }>();
     for (const row of rows) {
       const partyId = row.author_id === account.id ? row.addressee_id : row.author_id;
-      if (!latest.has(partyId)) latest.set(partyId, { body: row.body, created_at: row.created_at });
+      const preview =
+        row.body?.trim() ||
+        (row.media_kind === "photo" ? "Photo" : row.media_kind === "voice" ? "Voice note" : "");
+      if (!latest.has(partyId)) latest.set(partyId, { body: preview, created_at: row.created_at });
     }
     const ids = [...latest.keys()];
     if (ids.length === 0) {
