@@ -189,14 +189,20 @@ export type Database = {
           body: string
           created_at: string
           id: string
+          media_kind: string | null
+          media_seconds: number | null
+          media_url: string | null
           read_at: string | null
         }
         Insert: {
           addressee_id: string
           author_id: string
-          body: string
+          body?: string
           created_at?: string
           id?: string
+          media_kind?: string | null
+          media_seconds?: number | null
+          media_url?: string | null
           read_at?: string | null
         }
         Update: {
@@ -205,6 +211,9 @@ export type Database = {
           body?: string
           created_at?: string
           id?: string
+          media_kind?: string | null
+          media_seconds?: number | null
+          media_url?: string | null
           read_at?: string | null
         }
         Relationships: []
