@@ -198,7 +198,7 @@ function TalkLoopApp() {
   ];
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-24 pt-6 md:max-w-5xl md:flex-row md:gap-8 md:px-8 md:pb-8 md:pt-10">
+    <main className="mx-auto flex h-screen w-full max-w-md flex-col overflow-hidden px-4 pb-20 pt-6 md:max-w-5xl md:flex-row md:gap-8 md:px-8 md:pb-8 md:pt-10">
       {/* Desktop sidebar / mobile header */}
       <aside className="mb-5 md:mb-0 md:w-60 md:shrink-0">
         <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 md:block">
@@ -246,7 +246,7 @@ function TalkLoopApp() {
         </nav>
       </aside>
 
-      <section className="flex min-h-0 flex-1 flex-col md:panel md:min-h-[70vh] md:p-6">
+      <section className="flex min-h-0 flex-1 flex-col overflow-y-auto md:panel md:h-full md:p-6">
         {tab === "keypad" && <Dialer onSaved={() => void loadContacts()} />}
         {tab === "notes" && <NotesPanel openParty={openParty} setOpenParty={setOpenParty} />}
         {tab === "contacts" && (
