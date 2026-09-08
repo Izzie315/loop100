@@ -10,7 +10,7 @@ export function NoteMedia({
 }: {
   path: string;
   kind: string;
-  seconds?: number | null;
+  seconds?: number | null | undefined;
 }) {
   const [url, setUrl] = useState<string | null>(null);
 
