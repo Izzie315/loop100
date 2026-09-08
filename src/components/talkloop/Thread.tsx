@@ -1,12 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { SendHorizonal as DeliverIcon } from "lucide-react";
+import {
+  SendHorizonal as DeliverIcon,
+  ImagePlus,
+  Camera,
+  Mic,
+  Square,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
-import { timeLabel, type PublicProfile } from "@/lib/talkloop";
+import { durationLabel, timeLabel, type PublicProfile } from "@/lib/talkloop";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NoteMedia } from "@/components/talkloop/NoteMedia";
 
 export type Note = {
   id: string;
@@ -14,14 +23,33 @@ export type Note = {
   addressee_id: string;
   body: string;
   created_at: string;
+  media_url?: string | null;
+  media_kind?: string | null;
+  media_seconds?: number | null;
 };
+
+type Pending = {
+  file: File;
+  kind: "photo" | "voice";
+  previewUrl: string;
+  seconds?: number;
+};
+
+const COLUMNS = "id, author_id, addressee_id, body, created_at, media_url, media_kind, media_seconds";
 
 export function Thread({ party, compact = false }: { party: PublicProfile; compact?: boolean }) {
   const { account } = useAuth();
   const [notes, setNotes] = useState<Note[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<Pending | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [recSeconds, setRecSeconds] = useState(0);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const pickRef = useRef<HTMLInputElement | null>(null);
+  const captureRef = useRef<HTMLInputElement | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const meId = account?.id;
 
@@ -30,7 +58,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
     let cancelled = false;
     void supabase
       .from("notes")
-      .select("id, author_id, addressee_id, body, created_at")
+      .select(COLUMNS)
       .or(
         `and(author_id.eq.${meId},addressee_id.eq.${party.id}),and(author_id.eq.${party.id},addressee_id.eq.${meId})`,
       )
@@ -65,16 +93,114 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [notes.length]);
 
+  useEffect(() => {
+    return () => {
+      if (tickRef.current) clearInterval(tickRef.current);
+      recorderRef.current?.stream.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
+
+  const clearPending = () => {
+    if (pending) URL.revokeObjectURL(pending.previewUrl);
+    setPending(null);
+  };
+
+  const onPick = (file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("That photo is too large (20 MB max).");
+      return;
+    }
+    clearPending();
+    setPending({ file, kind: "photo", previewUrl: URL.createObjectURL(file) });
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: BlobPart[] = [];
+      let elapsed = 0;
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        if (tickRef.current) clearInterval(tickRef.current);
+        tickRef.current = null;
+        const type = recorder.mimeType || "audio/webm";
+        const blob = new Blob(chunks, { type });
+        if (blob.size < 1024) {
+          toast.error("That recording was empty — try again.");
+          return;
+        }
+        const ext = type.includes("mp4") ? "m4a" : "webm";
+        const file = new File([blob], `voice.${ext}`, { type });
+        clearPending();
+        setPending({
+          file,
+          kind: "voice",
+          previewUrl: URL.createObjectURL(blob),
+          seconds: elapsed,
+        });
+      };
+      recorderRef.current = recorder;
+      recorder.start();
+      setRecording(true);
+      setRecSeconds(0);
+      tickRef.current = setInterval(() => {
+        elapsed += 1;
+        setRecSeconds(elapsed);
+        if (elapsed >= 300) recorder.stop();
+      }, 1000);
+    } catch {
+      toast.error("Microphone access is needed to record.");
+    }
+  };
+
+  const stopRecording = () => {
+    recorderRef.current?.stop();
+    recorderRef.current = null;
+    setRecording(false);
+  };
+
   const deliver = async () => {
     const body = draft.trim();
-    if (!body || !meId || busy) return;
+    if ((!body && !pending) || !meId || busy || recording) return;
     setBusy(true);
+    const attached = pending;
     setDraft("");
-    const { data } = await supabase
+    setPending(null);
+
+    let mediaUrl: string | null = null;
+    if (attached) {
+      const ext = attached.file.name.split(".").pop() || "bin";
+      const path = `${meId}/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage
+        .from("note-media")
+        .upload(path, attached.file, { contentType: attached.file.type, upsert: false });
+      URL.revokeObjectURL(attached.previewUrl);
+      if (error) {
+        toast.error("That attachment could not be delivered.");
+        setBusy(false);
+        return;
+      }
+      mediaUrl = path;
+    }
+
+    const { data, error } = await supabase
       .from("notes")
-      .insert({ author_id: meId, addressee_id: party.id, body })
-      .select("id, author_id, addressee_id, body, created_at")
+      .insert({
+        author_id: meId,
+        addressee_id: party.id,
+        body,
+        media_url: mediaUrl,
+        media_kind: attached?.kind ?? null,
+        media_seconds: attached?.seconds ?? null,
+      })
+      .select(COLUMNS)
       .single();
+    if (error) toast.error("That note could not be delivered.");
     if (data) {
       setNotes((prev) =>
         prev.some((n) => n.id === (data as Note).id) ? prev : [...prev, data as Note],
@@ -99,13 +225,16 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
             <div key={n.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
               <div
                 className={cn(
-                  "max-w-[78%] rounded-2xl px-3.5 py-2 text-sm",
+                  "max-w-[78%] space-y-2 rounded-2xl px-3.5 py-2 text-sm",
                   mine
                     ? "bg-primary text-primary-foreground rounded-br-sm"
                     : "bg-secondary text-secondary-foreground rounded-bl-sm",
                 )}
               >
-                <p className="whitespace-pre-wrap break-words">{n.body}</p>
+                {n.media_url && n.media_kind && (
+                  <NoteMedia path={n.media_url} kind={n.media_kind} seconds={n.media_seconds} />
+                )}
+                {n.body && <p className="whitespace-pre-wrap break-words">{n.body}</p>}
                 <p
                   className={cn(
                     "mt-1 text-[10px] font-mono opacity-60",
@@ -121,6 +250,43 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
         <div ref={bottomRef} />
       </div>
 
+      {pending && (
+        <div className="mb-2 flex items-center gap-3 rounded-xl border border-border bg-muted/50 p-2">
+          {pending.kind === "photo" ? (
+            <img
+              src={pending.previewUrl}
+              alt="Attachment preview"
+              className="h-14 w-14 rounded-lg object-cover"
+            />
+          ) : (
+            <audio src={pending.previewUrl} controls className="h-9 flex-1" />
+          )}
+          <span className="flex-1 truncate text-xs text-muted-foreground">
+            {pending.kind === "photo"
+              ? "Photo ready"
+              : `Recording ready · ${durationLabel(pending.seconds ?? 0)}`}
+          </span>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 shrink-0"
+            onClick={clearPending}
+            aria-label="Discard attachment"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
+      {recording && (
+        <div className="mb-2 flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3 py-2">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+          <span className="font-mono text-xs text-primary">
+            Recording · {durationLabel(recSeconds)}
+          </span>
+        </div>
+      )}
+
       <form
         className="flex items-center gap-2 border-t border-border pt-3"
         onSubmit={(e) => {
@@ -128,6 +294,57 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
           void deliver();
         }}
       >
+        <input
+          ref={pickRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            onPick(e.target.files?.[0]);
+            e.target.value = "";
+          }}
+        />
+        <input
+          ref={captureRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={(e) => {
+            onPick(e.target.files?.[0]);
+            e.target.value = "";
+          }}
+        />
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="h-11 w-11 shrink-0 rounded-full"
+          onClick={() => pickRef.current?.click()}
+          aria-label="Attach a photo"
+        >
+          <ImagePlus className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="h-11 w-11 shrink-0 rounded-full"
+          onClick={() => captureRef.current?.click()}
+          aria-label="Take a photo"
+        >
+          <Camera className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          size="icon"
+          variant={recording ? "default" : "ghost"}
+          className="h-11 w-11 shrink-0 rounded-full"
+          onClick={() => (recording ? stopRecording() : void startRecording())}
+          aria-label={recording ? "Stop recording" : "Record your voice"}
+        >
+          {recording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+        </Button>
         <Input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -138,6 +355,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
           type="submit"
           size="icon"
           className="h-11 w-11 shrink-0 rounded-full"
+          disabled={busy || recording || (!draft.trim() && !pending)}
           aria-label="Deliver note"
         >
           <DeliverIcon className="h-4 w-4" />
