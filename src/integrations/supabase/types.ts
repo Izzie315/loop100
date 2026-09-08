@@ -188,6 +188,8 @@ export type Database = {
           author_id: string
           body: string
           created_at: string
+          edited_at: string | null
+          hidden_for: string[]
           id: string
           media_kind: string | null
           media_seconds: number | null
@@ -199,6 +201,8 @@ export type Database = {
           author_id: string
           body?: string
           created_at?: string
+          edited_at?: string | null
+          hidden_for?: string[]
           id?: string
           media_kind?: string | null
           media_seconds?: number | null
@@ -210,6 +214,8 @@ export type Database = {
           author_id?: string
           body?: string
           created_at?: string
+          edited_at?: string | null
+          hidden_for?: string[]
           id?: string
           media_kind?: string | null
           media_seconds?: number | null
