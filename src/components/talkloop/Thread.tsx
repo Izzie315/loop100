@@ -393,8 +393,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
         </DialogContent>
       </Dialog>
 
-        <div ref={bottomRef} />
-      </div>
+
 
       {pending && (
         <div className="mb-2 flex items-center gap-3 rounded-xl border border-border bg-muted/50 p-2">
