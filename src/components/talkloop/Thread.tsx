@@ -101,6 +101,15 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
         if (!relevant) return;
         setNotes((prev) => (prev.some((n) => n.id === row.id) ? prev : [...prev, row]));
       })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notes" }, (payload) => {
+        const row = payload.new as Note;
+        setNotes((prev) => prev.map((n) => (n.id === row.id ? { ...n, ...row } : n)));
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "notes" }, (payload) => {
+        const gone = payload.old as { id?: string };
+        if (!gone?.id) return;
+        setNotes((prev) => prev.filter((n) => n.id !== gone.id));
+      })
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
