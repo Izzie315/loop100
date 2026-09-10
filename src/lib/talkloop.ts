@@ -45,3 +45,22 @@ export function durationLabel(seconds: number): string {
   const s = seconds % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
+
+export type ContactEntry = PublicProfile & {
+  nickname_first: string | null;
+  nickname_last: string | null;
+  label: string | null;
+  memo: string | null;
+};
+
+/** Saved custom name when present, otherwise the account's own name. */
+export function contactName(c: ContactEntry): string {
+  const first = c.nickname_first?.trim() || c.first_name;
+  const last = c.nickname_last?.trim() || c.last_name;
+  return `${first} ${last}`.trim();
+}
+
+export function contactInitials(c: ContactEntry): string {
+  const [first = "", last = ""] = contactName(c).split(" ");
+  return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase();
+}
