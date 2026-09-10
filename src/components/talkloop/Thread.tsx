@@ -341,7 +341,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
             <DialogTitle>Note options</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-2">
-            {selected?.author_id === meId && (
+            {selected && selected.author_id === meId && (
               <>
                 <Button
                   variant="secondary"
