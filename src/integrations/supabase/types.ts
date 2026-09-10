@@ -81,19 +81,34 @@ export type Database = {
           contact_id: string
           created_at: string
           id: string
+          label: string | null
+          memo: string | null
+          nickname_first: string | null
+          nickname_last: string | null
           owner_id: string
+          updated_at: string
         }
         Insert: {
           contact_id: string
           created_at?: string
           id?: string
+          label?: string | null
+          memo?: string | null
+          nickname_first?: string | null
+          nickname_last?: string | null
           owner_id: string
+          updated_at?: string
         }
         Update: {
           contact_id?: string
           created_at?: string
           id?: string
+          label?: string | null
+          memo?: string | null
+          nickname_first?: string | null
+          nickname_last?: string | null
           owner_id?: string
+          updated_at?: string
         }
         Relationships: []
       }
