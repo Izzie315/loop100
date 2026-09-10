@@ -6,6 +6,9 @@ import {
   Mic,
   Square,
   X,
+  Pencil,
+  Trash2,
+  EyeOff,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -15,6 +18,14 @@ import { cn } from "@/lib/utils";
 import { durationLabel, timeLabel, type PublicProfile } from "@/lib/talkloop";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { NoteMedia } from "@/components/talkloop/NoteMedia";
 
 export type Note = {
@@ -23,6 +34,8 @@ export type Note = {
   addressee_id: string;
   body: string;
   created_at: string;
+  edited_at?: string | null;
+  hidden_for?: string[] | null;
   media_url?: string | null;
   media_kind?: string | null;
   media_seconds?: number | null;
@@ -35,7 +48,8 @@ type Pending = {
   seconds?: number;
 };
 
-const COLUMNS = "id, author_id, addressee_id, body, created_at, media_url, media_kind, media_seconds";
+const COLUMNS =
+  "id, author_id, addressee_id, body, created_at, edited_at, hidden_for, media_url, media_kind, media_seconds";
 
 export function Thread({ party, compact = false }: { party: PublicProfile; compact?: boolean }) {
   const { account } = useAuth();
