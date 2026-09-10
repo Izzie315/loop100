@@ -6,6 +6,9 @@ import {
   Mic,
   Square,
   X,
+  Pencil,
+  Trash2,
+  EyeOff,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -15,6 +18,14 @@ import { cn } from "@/lib/utils";
 import { durationLabel, timeLabel, type PublicProfile } from "@/lib/talkloop";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { NoteMedia } from "@/components/talkloop/NoteMedia";
 
 export type Note = {
@@ -23,6 +34,8 @@ export type Note = {
   addressee_id: string;
   body: string;
   created_at: string;
+  edited_at?: string | null;
+  hidden_for?: string[] | null;
   media_url?: string | null;
   media_kind?: string | null;
   media_seconds?: number | null;
@@ -35,7 +48,8 @@ type Pending = {
   seconds?: number;
 };
 
-const COLUMNS = "id, author_id, addressee_id, body, created_at, media_url, media_kind, media_seconds";
+const COLUMNS =
+  "id, author_id, addressee_id, body, created_at, edited_at, hidden_for, media_url, media_kind, media_seconds";
 
 export function Thread({ party, compact = false }: { party: PublicProfile; compact?: boolean }) {
   const { account } = useAuth();
@@ -50,6 +64,10 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
   const captureRef = useRef<HTMLInputElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [selected, setSelected] = useState<Note | null>(null);
+  const [editing, setEditing] = useState<Note | null>(null);
+  const [editDraft, setEditDraft] = useState("");
 
   const meId = account?.id;
 
@@ -82,6 +100,15 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
           (row.author_id === party.id && row.addressee_id === meId);
         if (!relevant) return;
         setNotes((prev) => (prev.some((n) => n.id === row.id) ? prev : [...prev, row]));
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notes" }, (payload) => {
+        const row = payload.new as Note;
+        setNotes((prev) => prev.map((n) => (n.id === row.id ? { ...n, ...row } : n)));
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "notes" }, (payload) => {
+        const gone = payload.old as { id?: string };
+        if (!gone?.id) return;
+        setNotes((prev) => prev.filter((n) => n.id !== gone.id));
       })
       .subscribe();
     return () => {
@@ -209,7 +236,54 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
     setBusy(false);
   };
 
-  const listed = useMemo(() => notes, [notes]);
+  const listed = useMemo(
+    () => notes.filter((n) => !(n.hidden_for ?? []).includes(meId ?? "")),
+    [notes, meId],
+  );
+
+  const beginPress = (note: Note) => {
+    if (pressRef.current) clearTimeout(pressRef.current);
+    pressRef.current = setTimeout(() => setSelected(note), 500);
+  };
+  const endPress = () => {
+    if (pressRef.current) clearTimeout(pressRef.current);
+    pressRef.current = null;
+  };
+
+  const unsend = async (note: Note) => {
+    setSelected(null);
+    setNotes((prev) => prev.filter((n) => n.id !== note.id));
+    if (note.media_url) {
+      await supabase.storage.from("note-media").remove([note.media_url]);
+    }
+    const { error } = await supabase.from("notes").delete().eq("id", note.id);
+    if (error) toast.error("That note could not be pulled back.");
+  };
+
+  const hideForMe = async (note: Note) => {
+    setSelected(null);
+    if (!meId) return;
+    const next = Array.from(new Set([...(note.hidden_for ?? []), meId]));
+    setNotes((prev) => prev.map((n) => (n.id === note.id ? { ...n, hidden_for: next } : n)));
+    const { error } = await supabase.from("notes").update({ hidden_for: next }).eq("id", note.id);
+    if (error) toast.error("That note could not be removed from your view.");
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    const body = editDraft.trim();
+    if (!body && !editing.media_url) return;
+    const stamp = new Date().toISOString();
+    setNotes((prev) =>
+      prev.map((n) => (n.id === editing.id ? { ...n, body, edited_at: stamp } : n)),
+    );
+    setEditing(null);
+    const { error } = await supabase
+      .from("notes")
+      .update({ body, edited_at: stamp })
+      .eq("id", editing.id);
+    if (error) toast.error("That change could not be saved.");
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -224,8 +298,18 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
           return (
             <div key={n.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
               <div
+                role="button"
+                tabIndex={0}
+                onPointerDown={() => beginPress(n)}
+                onPointerUp={endPress}
+                onPointerLeave={endPress}
+                onPointerCancel={endPress}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setSelected(n);
+                }}
                 className={cn(
-                  "max-w-[78%] space-y-2 rounded-2xl px-3.5 py-2 text-sm",
+                  "max-w-[78%] cursor-pointer select-none space-y-2 rounded-2xl px-3.5 py-2 text-sm",
                   mine
                     ? "bg-primary text-primary-foreground rounded-br-sm"
                     : "bg-secondary text-secondary-foreground rounded-bl-sm",
@@ -242,6 +326,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
                   )}
                 >
                   {timeLabel(n.created_at)}
+                  {n.edited_at ? " · edited" : ""}
                 </p>
               </div>
             </div>
@@ -249,6 +334,66 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
         })}
         <div ref={bottomRef} />
       </div>
+
+      <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Note options</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            {selected && selected.author_id === meId && (
+              <>
+                <Button
+                  variant="secondary"
+                  className="justify-start"
+                  onClick={() => {
+                    setEditDraft(selected.body ?? "");
+                    setEditing(selected);
+                    setSelected(null);
+                  }}
+                >
+                  <Pencil className="mr-2 h-4 w-4" /> Edit
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="justify-start"
+                  onClick={() => void unsend(selected)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" /> Pull back for everyone
+                </Button>
+              </>
+            )}
+            <Button
+              variant="ghost"
+              className="justify-start"
+              onClick={() => selected && void hideForMe(selected)}
+            >
+              <EyeOff className="mr-2 h-4 w-4" /> Remove just for me
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Edit note</DialogTitle>
+          </DialogHeader>
+          <Textarea
+            value={editDraft}
+            onChange={(e) => setEditDraft(e.target.value)}
+            className="min-h-24"
+          />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditing(null)}>
+              Cancel
+            </Button>
+            <Button onClick={() => void saveEdit()}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
 
       {pending && (
         <div className="mb-2 flex items-center gap-3 rounded-xl border border-border bg-muted/50 p-2">
