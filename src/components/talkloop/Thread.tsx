@@ -64,6 +64,10 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
   const captureRef = useRef<HTMLInputElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [selected, setSelected] = useState<Note | null>(null);
+  const [editing, setEditing] = useState<Note | null>(null);
+  const [editDraft, setEditDraft] = useState("");
 
   const meId = account?.id;
 
