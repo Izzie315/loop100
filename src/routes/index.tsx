@@ -312,6 +312,7 @@ function TalkLoopApp() {
         </div>
       </nav>
 
+      <NumberSettings open={numberOpen} onOpenChange={setNumberOpen} />
       <CallOverlay />
     </main>
   );
