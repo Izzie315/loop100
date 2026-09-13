@@ -165,25 +165,40 @@ function Onboarding() {
 function TalkLoopApp() {
   const { profile, signOut } = useAuth();
   const [tab, setTab] = useState<Tab>("keypad");
-  const [contacts, setContacts] = useState<PublicProfile[]>([]);
+  const [contacts, setContacts] = useState<ContactEntry[]>([]);
   const [openParty, setOpenParty] = useState<PublicProfile | null>(null);
+  const [numberOpen, setNumberOpen] = useState(false);
 
   const loadContacts = useCallback(async () => {
     if (!profile) return;
     const { data } = await supabase
       .from("contacts")
-      .select("contact_id")
+      .select("contact_id, nickname_first, nickname_last, label, memo")
       .eq("owner_id", profile.id);
-    const ids = ((data ?? []) as { contact_id: string }[]).map((r) => r.contact_id);
+    const rows = (data ?? []) as {
+      contact_id: string;
+      nickname_first: string | null;
+      nickname_last: string | null;
+      label: string | null;
+      memo: string | null;
+    }[];
+    const ids = rows.map((r) => r.contact_id);
     if (ids.length === 0) {
       setContacts([]);
       return;
     }
     const { data: profiles } = await supabase.rpc("get_profiles_public", { _ids: ids });
-    const list = ((profiles as PublicProfile[] | null) ?? []).slice();
-    list.sort((a, b) =>
-      `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`),
-    );
+    const list: ContactEntry[] = ((profiles as PublicProfile[] | null) ?? []).map((p) => {
+      const row = rows.find((r) => r.contact_id === p.id);
+      return {
+        ...p,
+        nickname_first: row?.nickname_first ?? null,
+        nickname_last: row?.nickname_last ?? null,
+        label: row?.label ?? null,
+        memo: row?.memo ?? null,
+      };
+    });
+    list.sort((a, b) => contactName(a).localeCompare(contactName(b)));
     setContacts(list);
   }, [profile]);
 
