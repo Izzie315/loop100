@@ -13,7 +13,15 @@ import { ContactsList } from "@/components/talkloop/ContactsList";
 import { NotesPanel } from "@/components/talkloop/NotesPanel";
 import { CallOverlay } from "@/components/talkloop/CallOverlay";
 import { cn } from "@/lib/utils";
-import { digitsOf, formatNumber, isValidNumber, type PublicProfile } from "@/lib/talkloop";
+import {
+  contactName,
+  digitsOf,
+  formatNumber,
+  isValidNumber,
+  type ContactEntry,
+  type PublicProfile,
+} from "@/lib/talkloop";
+import { NumberSettings } from "@/components/talkloop/NumberSettings";
 
 export const Route = createFileRoute("/")({
   head: () => ({
