@@ -228,9 +228,15 @@ function TalkLoopApp() {
           <div className="min-w-0">
             <p className="font-mono text-[10px] tracking-[0.45em] text-primary">TALKLOOP</p>
             <h1 className="truncate text-lg font-semibold">{profile?.first_name}</h1>
-            <p className="truncate font-mono text-xs text-muted-foreground">
-              {profile?.talkloop_number}
-            </p>
+            <button
+              type="button"
+              onClick={() => setNumberOpen(true)}
+              className="flex items-center gap-1.5 truncate font-mono text-xs text-muted-foreground transition-colors hover:text-primary"
+              aria-label="Edit your TalkLoop number"
+            >
+              <span className="truncate">{profile?.talkloop_number}</span>
+              <Pencil className="h-3 w-3 shrink-0" />
+            </button>
           </div>
           <Button
             size="icon"
