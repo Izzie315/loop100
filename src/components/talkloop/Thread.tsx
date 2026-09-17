@@ -342,6 +342,32 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
     if (error) toast.error("That note could not be removed from your view.");
   };
 
+  const react = async (note: Note, key: string) => {
+    setSelected(null);
+    if (!meId) return;
+    const mine = reactions.find((r) => r.note_id === note.id && r.account_id === meId);
+    if (mine?.reaction === key) {
+      setReactions((prev) =>
+        prev.filter((r) => !(r.note_id === note.id && r.account_id === meId)),
+      );
+      const { error } = await supabase
+        .from("note_reactions")
+        .delete()
+        .eq("note_id", note.id)
+        .eq("account_id", meId);
+      if (error) toast.error("That reaction could not be removed.");
+      return;
+    }
+    setReactions((prev) => [
+      ...prev.filter((r) => !(r.note_id === note.id && r.account_id === meId)),
+      { note_id: note.id, account_id: meId, reaction: key },
+    ]);
+    const { error } = await supabase
+      .from("note_reactions")
+      .upsert({ note_id: note.id, account_id: meId, reaction: key });
+    if (error) toast.error("That reaction could not be saved.");
+  };
+
   const saveEdit = async () => {
     if (!editing) return;
     const body = editDraft.trim();
@@ -368,8 +394,13 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
         )}
         {listed.map((n) => {
           const mine = n.author_id === meId;
+          const grouped = REACTIONS.map((r) => ({
+            ...r,
+            hits: reactions.filter((x) => x.note_id === n.id && x.reaction === r.key),
+          })).filter((g) => g.hits.length > 0);
           return (
             <div key={n.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
+              <div className="max-w-[78%]">
               <div
                 role="button"
                 tabIndex={0}
