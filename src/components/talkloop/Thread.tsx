@@ -48,6 +48,27 @@ type Pending = {
   seconds?: number;
 };
 
+type Reaction = {
+  note_id: string;
+  account_id: string;
+  reaction: string;
+};
+
+const REACTIONS: { key: string; glyph: string; label: string }[] = [
+  { key: "haha", glyph: "🤣", label: "Ha ha" },
+  { key: "thumbs_up", glyph: "👍", label: "Thumbs up" },
+  { key: "thumbs_down", glyph: "👎", label: "Thumbs down" },
+  { key: "heart", glyph: "❤️", label: "Heart" },
+  { key: "smiley", glyph: "😊", label: "Smiley face" },
+  { key: "sad", glyph: "😞", label: "Sad face" },
+  { key: "laughing", glyph: "😂", label: "Laughing face" },
+  { key: "crying", glyph: "😭", label: "Crying face" },
+  { key: "question", glyph: "❓", label: "Question marks" },
+  { key: "exclamation", glyph: "❗", label: "Exclamation points" },
+];
+
+const glyphOf = (key: string) => REACTIONS.find((r) => r.key === key)?.glyph ?? key;
+
 const COLUMNS =
   "id, author_id, addressee_id, body, created_at, edited_at, hidden_for, media_url, media_kind, media_seconds";
 
@@ -66,6 +87,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selected, setSelected] = useState<Note | null>(null);
+  const [reactions, setReactions] = useState<Reaction[]>([]);
   const [editing, setEditing] = useState<Note | null>(null);
   const [editDraft, setEditDraft] = useState("");
 
@@ -82,7 +104,21 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
       )
       .order("created_at", { ascending: true })
       .then(({ data }) => {
-        if (!cancelled) setNotes((data as Note[]) ?? []);
+        if (cancelled) return;
+        const rows = (data as Note[]) ?? [];
+        setNotes(rows);
+        const ids = rows.map((n) => n.id);
+        if (ids.length === 0) {
+          setReactions([]);
+          return;
+        }
+        void supabase
+          .from("note_reactions")
+          .select("note_id, account_id, reaction")
+          .in("note_id", ids)
+          .then(({ data: r }) => {
+            if (!cancelled) setReactions((r as Reaction[]) ?? []);
+          });
       });
     return () => {
       cancelled = true;
@@ -110,6 +146,43 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
         if (!gone?.id) return;
         setNotes((prev) => prev.filter((n) => n.id !== gone.id));
       })
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "note_reactions" },
+        (payload) => {
+          const row = payload.new as Reaction;
+          setReactions((prev) =>
+            prev.some((r) => r.note_id === row.note_id && r.account_id === row.account_id)
+              ? prev
+              : [...prev, row],
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "note_reactions" },
+        (payload) => {
+          const row = payload.new as Reaction;
+          setReactions((prev) =>
+            prev.map((r) =>
+              r.note_id === row.note_id && r.account_id === row.account_id ? row : r,
+            ),
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "note_reactions" },
+        (payload) => {
+          const gone = payload.old as { note_id?: string; account_id?: string };
+          if (!gone?.note_id) return;
+          setReactions((prev) =>
+            prev.filter(
+              (r) => !(r.note_id === gone.note_id && r.account_id === gone.account_id),
+            ),
+          );
+        },
+      )
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
