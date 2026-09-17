@@ -197,6 +197,35 @@ export type Database = {
         }
         Relationships: []
       }
+      note_reactions: {
+        Row: {
+          account_id: string
+          created_at: string
+          note_id: string
+          reaction: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          note_id: string
+          reaction: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          note_id?: string
+          reaction?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_reactions_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notes: {
         Row: {
           addressee_id: string
