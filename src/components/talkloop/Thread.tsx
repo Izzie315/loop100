@@ -413,7 +413,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
                   setSelected(n);
                 }}
                 className={cn(
-                  "max-w-[78%] cursor-pointer select-none space-y-2 rounded-2xl px-3.5 py-2 text-sm",
+                  "cursor-pointer select-none space-y-2 rounded-2xl px-3.5 py-2 text-sm",
                   mine
                     ? "bg-primary text-primary-foreground rounded-br-sm"
                     : "bg-secondary text-secondary-foreground rounded-bl-sm",
@@ -432,6 +432,33 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
                   {timeLabel(n.created_at)}
                   {n.edited_at ? " · edited" : ""}
                 </p>
+              </div>
+              {grouped.length > 0 && (
+                <div className={cn("mt-1 flex flex-wrap gap-1", mine && "justify-end")}>
+                  {grouped.map((g) => {
+                    const mine2 = g.hits.some((h) => h.account_id === meId);
+                    return (
+                      <button
+                        key={g.key}
+                        type="button"
+                        aria-label={`${g.label} reaction`}
+                        onClick={() => void react(n, g.key)}
+                        className={cn(
+                          "rounded-full border px-1.5 py-0.5 text-xs leading-none",
+                          mine2
+                            ? "border-primary bg-primary/15"
+                            : "border-border bg-muted/60",
+                        )}
+                      >
+                        {g.glyph}
+                        {g.hits.length > 1 && (
+                          <span className="ml-1 font-mono text-[10px]">{g.hits.length}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               </div>
             </div>
           );
