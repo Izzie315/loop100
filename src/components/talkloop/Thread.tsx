@@ -400,7 +400,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
           })).filter((g) => g.hits.length > 0);
           return (
             <div key={n.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
-              <div className="max-w-[78%]">
+              <div className="relative max-w-[78%]">
               <div
                 role="button"
                 tabIndex={0}
@@ -434,20 +434,23 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
                 </p>
               </div>
               {grouped.length > 0 && (
-                <div className={cn("mt-1 flex flex-wrap gap-1", mine && "justify-end")}>
-                  {grouped.map((g) => {
+                <div
+                  className="absolute -top-2.5 flex flex-nowrap gap-1 ltr:right-2 rtl:left-2"
+                >
+                  {grouped.map((g, gi) => {
                     const mine2 = g.hits.some((h) => h.account_id === meId);
                     return (
                       <button
-                        key={g.key}
+                        key={`${g.key}:${g.hits.length}:${mine2}`}
                         type="button"
                         aria-label={`${g.label} reaction`}
                         onClick={() => void react(n, g.key)}
+                        style={{ animationDelay: `${gi * 60}ms` }}
                         className={cn(
-                          "rounded-full border px-1.5 py-0.5 text-xs leading-none",
+                          "animate-scale-in rounded-full border bg-card px-1.5 py-0.5 text-xs leading-none shadow-md",
                           mine2
                             ? "border-primary bg-primary/15"
-                            : "border-border bg-muted/60",
+                            : "border-border",
                         )}
                       >
                         {g.glyph}
