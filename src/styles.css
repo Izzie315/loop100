@@ -229,8 +229,16 @@
   60% { transform: scale(1); }
 }
 
-@utility react-anim-* {
-  animation:
-    tl-pop-in 0.3s ease-out both,
-    --value(--tl-anim) 2.6s ease-in-out 0.3s 1 both;
+.tl-react {
+  animation: tl-pop-in 0.3s ease-out both;
 }
+.tl-react-haha { animation: tl-pop-in 0.3s ease-out both, tl-shake-laugh 1.3s ease-in-out 0.3s 2 both; }
+.tl-react-laughing { animation: tl-pop-in 0.3s ease-out both, tl-shake-laugh 0.9s ease-in-out 0.3s 3 both; }
+.tl-react-thumbs_up { animation: tl-pop-in 0.3s ease-out both, tl-thumb-up 1.2s ease-in-out 0.3s 2 both; }
+.tl-react-thumbs_down { animation: tl-pop-in 0.3s ease-out both, tl-thumb-down 1.2s ease-in-out 0.3s 2 both; }
+.tl-react-heart { animation: tl-pop-in 0.3s ease-out both, tl-beat 1.4s ease-in-out 0.3s 2 both; }
+.tl-react-smiley { animation: tl-pop-in 0.3s ease-out both, tl-grin 1.4s ease-in-out 0.3s 2 both; }
+.tl-react-sad { animation: tl-pop-in 0.3s ease-out both, tl-droop 1.5s ease-in-out 0.3s 2 both; }
+.tl-react-crying { animation: tl-pop-in 0.3s ease-out both, tl-drip 1.3s ease-in-out 0.3s 2 both; }
+.tl-react-question { animation: tl-pop-in 0.3s ease-out both, tl-spin-query 1.3s ease-in-out 0.3s 2 both; }
+.tl-react-exclamation { animation: tl-pop-in 0.3s ease-out both, tl-bang 1.4s ease-in-out 0.3s 2 both; }
