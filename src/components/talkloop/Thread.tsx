@@ -471,6 +471,31 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
           <DialogHeader>
             <DialogTitle>Note options</DialogTitle>
           </DialogHeader>
+          {selected && (
+            <div className="grid grid-cols-5 gap-1">
+              {REACTIONS.map((r) => {
+                const active = reactions.some(
+                  (x) =>
+                    x.note_id === selected.id && x.account_id === meId && x.reaction === r.key,
+                );
+                return (
+                  <button
+                    key={r.key}
+                    type="button"
+                    aria-label={r.label}
+                    title={r.label}
+                    onClick={() => void react(selected, r.key)}
+                    className={cn(
+                      "rounded-lg p-1.5 text-xl transition-colors hover:bg-muted",
+                      active && "bg-primary/15 ring-1 ring-primary",
+                    )}
+                  >
+                    {r.glyph}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <div className="flex flex-col gap-2">
             {selected && selected.author_id === meId && (
               <>
