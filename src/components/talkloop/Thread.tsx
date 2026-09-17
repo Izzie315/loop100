@@ -48,6 +48,27 @@ type Pending = {
   seconds?: number;
 };
 
+type Reaction = {
+  note_id: string;
+  account_id: string;
+  reaction: string;
+};
+
+const REACTIONS: { key: string; glyph: string; label: string }[] = [
+  { key: "haha", glyph: "🤣", label: "Ha ha" },
+  { key: "thumbs_up", glyph: "👍", label: "Thumbs up" },
+  { key: "thumbs_down", glyph: "👎", label: "Thumbs down" },
+  { key: "heart", glyph: "❤️", label: "Heart" },
+  { key: "smiley", glyph: "😊", label: "Smiley face" },
+  { key: "sad", glyph: "😞", label: "Sad face" },
+  { key: "laughing", glyph: "😂", label: "Laughing face" },
+  { key: "crying", glyph: "😭", label: "Crying face" },
+  { key: "question", glyph: "❓", label: "Question marks" },
+  { key: "exclamation", glyph: "❗", label: "Exclamation points" },
+];
+
+const glyphOf = (key: string) => REACTIONS.find((r) => r.key === key)?.glyph ?? key;
+
 const COLUMNS =
   "id, author_id, addressee_id, body, created_at, edited_at, hidden_for, media_url, media_kind, media_seconds";
 
@@ -66,6 +87,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selected, setSelected] = useState<Note | null>(null);
+  const [reactions, setReactions] = useState<Reaction[]>([]);
   const [editing, setEditing] = useState<Note | null>(null);
   const [editDraft, setEditDraft] = useState("");
 
@@ -82,7 +104,21 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
       )
       .order("created_at", { ascending: true })
       .then(({ data }) => {
-        if (!cancelled) setNotes((data as Note[]) ?? []);
+        if (cancelled) return;
+        const rows = (data as Note[]) ?? [];
+        setNotes(rows);
+        const ids = rows.map((n) => n.id);
+        if (ids.length === 0) {
+          setReactions([]);
+          return;
+        }
+        void supabase
+          .from("note_reactions")
+          .select("note_id, account_id, reaction")
+          .in("note_id", ids)
+          .then(({ data: r }) => {
+            if (!cancelled) setReactions((r as Reaction[]) ?? []);
+          });
       });
     return () => {
       cancelled = true;
@@ -110,6 +146,43 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
         if (!gone?.id) return;
         setNotes((prev) => prev.filter((n) => n.id !== gone.id));
       })
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "note_reactions" },
+        (payload) => {
+          const row = payload.new as Reaction;
+          setReactions((prev) =>
+            prev.some((r) => r.note_id === row.note_id && r.account_id === row.account_id)
+              ? prev
+              : [...prev, row],
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "note_reactions" },
+        (payload) => {
+          const row = payload.new as Reaction;
+          setReactions((prev) =>
+            prev.map((r) =>
+              r.note_id === row.note_id && r.account_id === row.account_id ? row : r,
+            ),
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "note_reactions" },
+        (payload) => {
+          const gone = payload.old as { note_id?: string; account_id?: string };
+          if (!gone?.note_id) return;
+          setReactions((prev) =>
+            prev.filter(
+              (r) => !(r.note_id === gone.note_id && r.account_id === gone.account_id),
+            ),
+          );
+        },
+      )
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
@@ -269,6 +342,32 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
     if (error) toast.error("That note could not be removed from your view.");
   };
 
+  const react = async (note: Note, key: string) => {
+    setSelected(null);
+    if (!meId) return;
+    const mine = reactions.find((r) => r.note_id === note.id && r.account_id === meId);
+    if (mine?.reaction === key) {
+      setReactions((prev) =>
+        prev.filter((r) => !(r.note_id === note.id && r.account_id === meId)),
+      );
+      const { error } = await supabase
+        .from("note_reactions")
+        .delete()
+        .eq("note_id", note.id)
+        .eq("account_id", meId);
+      if (error) toast.error("That reaction could not be removed.");
+      return;
+    }
+    setReactions((prev) => [
+      ...prev.filter((r) => !(r.note_id === note.id && r.account_id === meId)),
+      { note_id: note.id, account_id: meId, reaction: key },
+    ]);
+    const { error } = await supabase
+      .from("note_reactions")
+      .upsert({ note_id: note.id, account_id: meId, reaction: key });
+    if (error) toast.error("That reaction could not be saved.");
+  };
+
   const saveEdit = async () => {
     if (!editing) return;
     const body = editDraft.trim();
@@ -295,8 +394,13 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
         )}
         {listed.map((n) => {
           const mine = n.author_id === meId;
+          const grouped = REACTIONS.map((r) => ({
+            ...r,
+            hits: reactions.filter((x) => x.note_id === n.id && x.reaction === r.key),
+          })).filter((g) => g.hits.length > 0);
           return (
             <div key={n.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
+              <div className="max-w-[78%]">
               <div
                 role="button"
                 tabIndex={0}
@@ -309,7 +413,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
                   setSelected(n);
                 }}
                 className={cn(
-                  "max-w-[78%] cursor-pointer select-none space-y-2 rounded-2xl px-3.5 py-2 text-sm",
+                  "cursor-pointer select-none space-y-2 rounded-2xl px-3.5 py-2 text-sm",
                   mine
                     ? "bg-primary text-primary-foreground rounded-br-sm"
                     : "bg-secondary text-secondary-foreground rounded-bl-sm",
@@ -329,6 +433,33 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
                   {n.edited_at ? " · edited" : ""}
                 </p>
               </div>
+              {grouped.length > 0 && (
+                <div className={cn("mt-1 flex flex-wrap gap-1", mine && "justify-end")}>
+                  {grouped.map((g) => {
+                    const mine2 = g.hits.some((h) => h.account_id === meId);
+                    return (
+                      <button
+                        key={g.key}
+                        type="button"
+                        aria-label={`${g.label} reaction`}
+                        onClick={() => void react(n, g.key)}
+                        className={cn(
+                          "rounded-full border px-1.5 py-0.5 text-xs leading-none",
+                          mine2
+                            ? "border-primary bg-primary/15"
+                            : "border-border bg-muted/60",
+                        )}
+                      >
+                        {g.glyph}
+                        {g.hits.length > 1 && (
+                          <span className="ml-1 font-mono text-[10px]">{g.hits.length}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              </div>
             </div>
           );
         })}
@@ -340,6 +471,31 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
           <DialogHeader>
             <DialogTitle>Note options</DialogTitle>
           </DialogHeader>
+          {selected && (
+            <div className="grid grid-cols-5 gap-1">
+              {REACTIONS.map((r) => {
+                const active = reactions.some(
+                  (x) =>
+                    x.note_id === selected.id && x.account_id === meId && x.reaction === r.key,
+                );
+                return (
+                  <button
+                    key={r.key}
+                    type="button"
+                    aria-label={r.label}
+                    title={r.label}
+                    onClick={() => void react(selected, r.key)}
+                    className={cn(
+                      "rounded-lg p-1.5 text-xl transition-colors hover:bg-muted",
+                      active && "bg-primary/15 ring-1 ring-primary",
+                    )}
+                  >
+                    {r.glyph}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <div className="flex flex-col gap-2">
             {selected && selected.author_id === meId && (
               <>
