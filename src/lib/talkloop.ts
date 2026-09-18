@@ -55,12 +55,24 @@ export type ContactEntry = PublicProfile & {
 
 /** Saved custom name when present, otherwise the account's own name. */
 export function contactName(c: ContactEntry): string {
-  const first = c.nickname_first?.trim() || c.first_name;
-  const last = c.nickname_last?.trim() || c.last_name;
-  return `${first} ${last}`.trim();
+  const saved = `${c.nickname_first ?? ""} ${c.nickname_last ?? ""}`.trim();
+  return saved || `${c.first_name} ${c.last_name}`.trim();
 }
 
 export function contactInitials(c: ContactEntry): string {
-  const [first = "", last = ""] = contactName(c).split(" ");
-  return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase();
+  const parts = contactName(c).split(/\s+/).filter(Boolean);
+  const a = parts[0]?.[0] ?? "";
+  const b = parts.length > 1 ? parts[parts.length - 1]![0]! : "";
+  return `${a}${b}`.toUpperCase();
+}
+
+export function callDuration(answeredAt: string | null, endedAt: string | null): number | null {
+  if (!answeredAt || !endedAt) return null;
+  const secs = Math.round((new Date(endedAt).getTime() - new Date(answeredAt).getTime()) / 1000);
+  return secs >= 0 ? secs : null;
+}
+
+export function stampLabel(iso: string): string {
+  const d = new Date(iso);
+  return `${d.toLocaleDateString([], { month: "short", day: "numeric" })} · ${d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
 }
