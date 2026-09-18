@@ -346,19 +346,6 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
   const react = async (note: Note, key: string) => {
     setSelected(null);
     if (!meId) return;
-    const mine = reactions.find((r) => r.note_id === note.id && r.account_id === meId);
-    if (mine?.reaction === key) {
-      setReactions((prev) =>
-        prev.filter((r) => !(r.note_id === note.id && r.account_id === meId)),
-      );
-      const { error } = await supabase
-        .from("note_reactions")
-        .delete()
-        .eq("note_id", note.id)
-        .eq("account_id", meId);
-      if (error) toast.error("That reaction could not be removed.");
-      return;
-    }
     setReactions((prev) => [
       ...prev.filter((r) => !(r.note_id === note.id && r.account_id === meId)),
       { note_id: note.id, account_id: meId, reaction: key },
@@ -367,6 +354,18 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
       .from("note_reactions")
       .upsert({ note_id: note.id, account_id: meId, reaction: key });
     if (error) toast.error("That reaction could not be saved.");
+  };
+
+  const dropReaction = async (note: Note) => {
+    setSelected(null);
+    if (!meId) return;
+    setReactions((prev) => prev.filter((r) => !(r.note_id === note.id && r.account_id === meId)));
+    const { error } = await supabase
+      .from("note_reactions")
+      .delete()
+      .eq("note_id", note.id)
+      .eq("account_id", meId);
+    if (error) toast.error("That reaction could not be removed.");
   };
 
   const saveEdit = async () => {
@@ -436,11 +435,10 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
               </div>
               {grouped.length > 0 && (
                 <div className="pointer-events-none absolute -top-3 flex flex-nowrap gap-0.5 ltr:right-2 rtl:left-2">
-                  {grouped.map((g, gi) => (
+                  {grouped.map((g) => (
                     <span
                       key={`${g.key}:${g.hits.length}`}
                       aria-label={`${g.label} reaction`}
-                      style={{ animationDelay: `${gi * 80}ms` }}
                       className={cn("text-sm leading-none drop-shadow", `tl-react-${g.key}`)}
                     >
                       {g.glyph}
@@ -510,6 +508,15 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
                   <Trash2 className="mr-2 h-4 w-4" /> Pull back for everyone
                 </Button>
               </>
+            )}
+            {selected && reactions.some((x) => x.note_id === selected.id && x.account_id === meId) && (
+              <Button
+                variant="secondary"
+                className="justify-start"
+                onClick={() => void dropReaction(selected)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Delete reaction
+              </Button>
             )}
             <Button
               variant="ghost"
