@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NotebookPen, Pencil, Phone, Trash2, Users as GroupIcon } from "lucide-react";
+import { NotebookPen, Pencil, Phone, Plus, Trash2, Users as GroupIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -17,7 +17,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { contactInitials, contactName, type ContactEntry } from "@/lib/talkloop";
+import {
+  contactInitials,
+  contactName,
+  digitsOf,
+  formatNumber,
+  fullName,
+  type ContactEntry,
+  type PublicProfile,
+} from "@/lib/talkloop";
 
 export function ContactsList({
   contacts,
@@ -31,32 +39,30 @@ export function ContactsList({
   const { account } = useAuth();
   const { startCall } = useCall();
   const [editing, setEditing] = useState<ContactEntry | null>(null);
-  const [first, setFirst] = useState("");
-  const [last, setLast] = useState("");
+  const [name, setName] = useState("");
   const [label, setLabel] = useState("");
   const [memo, setMemo] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const [adding, setAdding] = useState(false);
+  const [newNumber, setNewNumber] = useState("");
+  const [newName, setNewName] = useState("");
+
   const openEditor = (c: ContactEntry) => {
     setEditing(c);
-    setFirst(c.nickname_first ?? c.first_name);
-    setLast(c.nickname_last ?? c.last_name);
+    setName(`${c.nickname_first ?? ""} ${c.nickname_last ?? ""}`.trim());
     setLabel(c.label ?? "");
     setMemo(c.memo ?? "");
   };
 
   const save = async () => {
     if (!account || !editing) return;
-    if (!first.trim()) {
-      toast.error("A first name is required.");
-      return;
-    }
     setSaving(true);
     const { error } = await supabase
       .from("contacts")
       .update({
-        nickname_first: first.trim(),
-        nickname_last: last.trim() || null,
+        nickname_first: name.trim() || null,
+        nickname_last: null,
         label: label.trim() || null,
         memo: memo.trim() || null,
       })
@@ -72,6 +78,43 @@ export function ContactsList({
     onChanged();
   };
 
+  const addContact = async () => {
+    if (!account) return;
+    const digits = digitsOf(newNumber);
+    if (digits.length !== 10) {
+      toast.error("Enter a 10-digit TalkLoop number.");
+      return;
+    }
+    setSaving(true);
+    const { data } = await supabase.rpc("lookup_by_number", { _number: digits });
+    const found = ((data as PublicProfile[] | null) ?? [])[0];
+    if (!found) {
+      setSaving(false);
+      toast.error("No TalkLoop account has that number.");
+      return;
+    }
+    if (found.id === account.id) {
+      setSaving(false);
+      toast.error("That's your own number.");
+      return;
+    }
+    const { error } = await supabase.from("contacts").insert({
+      owner_id: account.id,
+      contact_id: found.id,
+      nickname_first: newName.trim() || null,
+    });
+    setSaving(false);
+    if (error) {
+      toast.error("They're already in your contacts.");
+      return;
+    }
+    toast.success(`${newName.trim() || fullName(found)} saved.`);
+    setAdding(false);
+    setNewNumber("");
+    setNewName("");
+    onChanged();
+  };
+
   const remove = async (id: string) => {
     if (!account) return;
     await supabase.from("contacts").delete().eq("owner_id", account.id).eq("contact_id", id);
@@ -84,19 +127,29 @@ export function ContactsList({
     return acc;
   }, {});
 
-  if (contacts.length === 0) {
-    return (
-      <div className="flex flex-col items-center gap-3 py-16 text-center">
-        <GroupIcon className="h-8 w-8 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">
-          No contacts yet. Dial a TalkLoop number and tap the add icon to save it.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 pb-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Contacts</h2>
+        <Button
+          size="icon"
+          className="h-10 w-10 rounded-full"
+          onClick={() => setAdding(true)}
+          aria-label="Add a contact"
+        >
+          <Plus className="h-5 w-5" />
+        </Button>
+      </div>
+
+      {contacts.length === 0 && (
+        <div className="flex flex-col items-center gap-3 py-16 text-center">
+          <GroupIcon className="h-8 w-8 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            No contacts yet. Tap the plus button to add one.
+          </p>
+        </div>
+      )}
+
       {Object.keys(sections)
         .sort()
         .map((letter) => (
@@ -163,6 +216,44 @@ export function ContactsList({
           </section>
         ))}
 
+      <Dialog open={adding} onOpenChange={(open) => !open && setAdding(false)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Add a contact</DialogTitle>
+            <DialogDescription>
+              Enter their TalkLoop number. A name is optional — call them whatever you like.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="add-number">TalkLoop number</Label>
+              <Input
+                id="add-number"
+                inputMode="numeric"
+                className="font-mono"
+                placeholder="(317) 555-0142"
+                value={newNumber}
+                onChange={(e) => setNewNumber(formatNumber(e.target.value))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-name">Name (optional)</Label>
+              <Input
+                id="add-name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="However you want to list them"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => void addContact()} disabled={saving}>
+              Save contact
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent>
           <DialogHeader>
@@ -173,19 +264,14 @@ export function ContactsList({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="contact-first">First name</Label>
-                <Input
-                  id="contact-first"
-                  value={first}
-                  onChange={(e) => setFirst(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="contact-last">Last name</Label>
-                <Input id="contact-last" value={last} onChange={(e) => setLast(e.target.value)} />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="contact-name">Name (optional)</Label>
+              <Input
+                id="contact-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="However you want to list them"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="contact-label">Label</Label>
@@ -206,16 +292,13 @@ export function ContactsList({
                 onChange={(e) => setMemo(e.target.value)}
               />
             </div>
-            <p className="font-mono text-xs text-muted-foreground">
-              {editing?.talkloop_number}
-            </p>
+            {editing ? (
+              <p className="font-mono text-xs text-muted-foreground">{editing.talkloop_number}</p>
+            ) : null}
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setEditing(null)}>
-              Cancel
-            </Button>
             <Button onClick={() => void save()} disabled={saving}>
-              {saving ? "Saving…" : "Save"}
+              Save details
             </Button>
           </DialogFooter>
         </DialogContent>
