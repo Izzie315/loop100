@@ -65,6 +65,7 @@ const REACTIONS: { key: string; glyph: string; label: string }[] = [
   { key: "crying", glyph: "😭", label: "Crying face" },
   { key: "question", glyph: "❓", label: "Question marks" },
   { key: "exclamation", glyph: "❗", label: "Exclamation points" },
+  { key: "mad", glyph: "😠", label: "Mad face" },
 ];
 
 const glyphOf = (key: string) => REACTIONS.find((r) => r.key === key)?.glyph ?? key;
@@ -345,19 +346,6 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
   const react = async (note: Note, key: string) => {
     setSelected(null);
     if (!meId) return;
-    const mine = reactions.find((r) => r.note_id === note.id && r.account_id === meId);
-    if (mine?.reaction === key) {
-      setReactions((prev) =>
-        prev.filter((r) => !(r.note_id === note.id && r.account_id === meId)),
-      );
-      const { error } = await supabase
-        .from("note_reactions")
-        .delete()
-        .eq("note_id", note.id)
-        .eq("account_id", meId);
-      if (error) toast.error("That reaction could not be removed.");
-      return;
-    }
     setReactions((prev) => [
       ...prev.filter((r) => !(r.note_id === note.id && r.account_id === meId)),
       { note_id: note.id, account_id: meId, reaction: key },
@@ -366,6 +354,18 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
       .from("note_reactions")
       .upsert({ note_id: note.id, account_id: meId, reaction: key });
     if (error) toast.error("That reaction could not be saved.");
+  };
+
+  const dropReaction = async (note: Note) => {
+    setSelected(null);
+    if (!meId) return;
+    setReactions((prev) => prev.filter((r) => !(r.note_id === note.id && r.account_id === meId)));
+    const { error } = await supabase
+      .from("note_reactions")
+      .delete()
+      .eq("note_id", note.id)
+      .eq("account_id", meId);
+    if (error) toast.error("That reaction could not be removed.");
   };
 
   const saveEdit = async () => {
@@ -434,32 +434,19 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
                 </p>
               </div>
               {grouped.length > 0 && (
-                <div
-                  className="absolute -top-2.5 flex flex-nowrap gap-1 ltr:right-2 rtl:left-2"
-                >
-                  {grouped.map((g, gi) => {
-                    const mine2 = g.hits.some((h) => h.account_id === meId);
-                    return (
-                      <button
-                        key={`${g.key}:${g.hits.length}:${mine2}`}
-                        type="button"
-                        aria-label={`${g.label} reaction`}
-                        onClick={() => void react(n, g.key)}
-                        style={{ animationDelay: `${gi * 60}ms` }}
-                        className={cn(
-                          "animate-scale-in rounded-full border bg-card px-1.5 py-0.5 text-xs leading-none shadow-md",
-                          mine2
-                            ? "border-primary bg-primary/15"
-                            : "border-border",
-                        )}
-                      >
-                        {g.glyph}
-                        {g.hits.length > 1 && (
-                          <span className="ml-1 font-mono text-[10px]">{g.hits.length}</span>
-                        )}
-                      </button>
-                    );
-                  })}
+                <div className="pointer-events-none absolute -top-3 flex flex-nowrap gap-0.5 ltr:right-2 rtl:left-2">
+                  {grouped.map((g) => (
+                    <span
+                      key={`${g.key}:${g.hits.length}`}
+                      aria-label={`${g.label} reaction`}
+                      className={cn("text-sm leading-none drop-shadow", `tl-react-${g.key}`)}
+                    >
+                      {g.glyph}
+                      {g.hits.length > 1 && (
+                        <span className="ml-0.5 font-mono text-[10px]">{g.hits.length}</span>
+                      )}
+                    </span>
+                  ))}
                 </div>
               )}
               </div>
@@ -521,6 +508,15 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
                   <Trash2 className="mr-2 h-4 w-4" /> Pull back for everyone
                 </Button>
               </>
+            )}
+            {selected && reactions.some((x) => x.note_id === selected.id && x.account_id === meId) && (
+              <Button
+                variant="secondary"
+                className="justify-start"
+                onClick={() => void dropReaction(selected)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Delete reaction
+              </Button>
             )}
             <Button
               variant="ghost"
