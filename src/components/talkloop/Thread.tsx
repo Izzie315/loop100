@@ -65,6 +65,7 @@ const REACTIONS: { key: string; glyph: string; label: string }[] = [
   { key: "crying", glyph: "😭", label: "Crying face" },
   { key: "question", glyph: "❓", label: "Question marks" },
   { key: "exclamation", glyph: "❗", label: "Exclamation points" },
+  { key: "mad", glyph: "😠", label: "Mad face" },
 ];
 
 const glyphOf = (key: string) => REACTIONS.find((r) => r.key === key)?.glyph ?? key;
