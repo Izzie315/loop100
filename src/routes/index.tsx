@@ -1,6 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { Grid3x3, LogOut, NotebookPen, Pencil, Users as GroupIcon } from "lucide-react";
+import {
+  Clock,
+  Grid3x3,
+  LogOut,
+  NotebookPen,
+  Pencil,
+  Users as GroupIcon,
+  UsersRound,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +30,8 @@ import {
   type PublicProfile,
 } from "@/lib/talkloop";
 import { NumberSettings } from "@/components/talkloop/NumberSettings";
+import { HistoryPanel } from "@/components/talkloop/HistoryPanel";
+import { GroupsPanel } from "@/components/talkloop/GroupsPanel";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -43,7 +53,7 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type Tab = "keypad" | "notes" | "contacts";
+type Tab = "keypad" | "notes" | "contacts" | "loops" | "history";
 
 function Index() {
   const { account, profile, loading } = useAuth();
@@ -218,6 +228,8 @@ function TalkLoopApp() {
     { id: "keypad", label: "Keypad", icon: Grid3x3 },
     { id: "notes", label: "Notes", icon: NotebookPen },
     { id: "contacts", label: "Contacts", icon: GroupIcon },
+    { id: "loops", label: "Loops", icon: UsersRound },
+    { id: "history", label: "Recents", icon: Clock },
   ];
 
   return (
@@ -276,7 +288,7 @@ function TalkLoopApp() {
       </aside>
 
       <section className="flex min-h-0 flex-1 flex-col overflow-y-auto md:panel md:h-full md:p-6">
-        {tab === "keypad" && <Dialer onSaved={() => void loadContacts()} />}
+        {tab === "keypad" && <Dialer />}
         {tab === "notes" && <NotesPanel openParty={openParty} setOpenParty={setOpenParty} />}
         {tab === "contacts" && (
           <ContactsList
@@ -288,6 +300,8 @@ function TalkLoopApp() {
             }}
           />
         )}
+        {tab === "loops" && <GroupsPanel contacts={contacts} />}
+        {tab === "history" && <HistoryPanel />}
       </section>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur md:hidden">
