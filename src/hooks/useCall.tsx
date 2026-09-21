@@ -171,7 +171,8 @@ export function CallProvider({ children }: { children: ReactNode }) {
       const answer = await link.createAnswer();
       await link.setLocalDescription(answer);
       await relaySignal("answer", { sdp: answer.sdp, type: answer.type });
-      await supabase.from("calls").update({ status: "active" }).eq("id", callIdRef.current);
+      await supabase.from("calls").update({ status: "active", answered_at: new Date().toISOString() })
+        .eq("id", callIdRef.current);
       setPhase("active");
     } catch {
       toast.error("Microphone access is required to answer.");
