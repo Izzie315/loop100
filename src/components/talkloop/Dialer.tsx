@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { Delete, Phone, UserPlus as AddContactIcon } from "lucide-react";
+import { Delete, Phone } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { useCall } from "@/hooks/useCall";
 import { Button } from "@/components/ui/button";
 import { digitsOf, formatNumber, fullName, type PublicProfile } from "@/lib/talkloop";
@@ -23,8 +22,7 @@ const KEYS = [
   ["#", ""],
 ];
 
-export function Dialer({ onSaved }: { onSaved: () => void }) {
-  const { account } = useAuth();
+export function Dialer() {
   const { startCall } = useCall();
   const [value, setValue] = useState("");
   const [match, setMatch] = useState<PublicProfile | null>(null);
@@ -56,31 +54,6 @@ export function Dialer({ onSaved }: { onSaved: () => void }) {
     await startCall(found);
   };
 
-  const saveContact = async () => {
-    if (!account || digits.length !== 10) return;
-    setBusy(true);
-    const found = match ?? (await lookup());
-    if (!found) {
-      setBusy(false);
-      toast.error("No TalkLoop account has that number.");
-      return;
-    }
-    if (found.id === account.id) {
-      setBusy(false);
-      toast.error("That's your own number.");
-      return;
-    }
-    const { error } = await supabase
-      .from("contacts")
-      .insert({ owner_id: account.id, contact_id: found.id });
-    setBusy(false);
-    if (error) toast.error("Already in your contacts.");
-    else {
-      toast.success(`${fullName(found)} saved to contacts`);
-      onSaved();
-    }
-  };
-
   return (
     <div className="flex flex-col items-center gap-6 pb-4">
       <div className="h-16 text-center">
@@ -109,17 +82,6 @@ export function Dialer({ onSaved }: { onSaved: () => void }) {
       </div>
 
       <div className="flex w-full max-w-xs items-center justify-between">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-12 w-12 rounded-full"
-          onClick={() => void saveContact()}
-          disabled={digits.length !== 10 || busy}
-          aria-label="Save to contacts"
-        >
-          <AddContactIcon className="h-5 w-5" />
-        </Button>
-
         <Button
           size="icon"
           className="glow-ring h-16 w-16 rounded-full"
