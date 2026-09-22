@@ -144,27 +144,71 @@ export type Database = {
           },
         ]
       }
+      group_note_reactions: {
+        Row: {
+          account_id: string
+          created_at: string
+          note_id: string
+          reaction: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          note_id: string
+          reaction: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          note_id?: string
+          reaction?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_note_reactions_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "group_notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       group_notes: {
         Row: {
           author_id: string
           body: string
           created_at: string
+          edited_at: string | null
           group_id: string
+          hidden_for: string[]
           id: string
+          media_kind: string | null
+          media_seconds: number | null
+          media_url: string | null
         }
         Insert: {
           author_id: string
-          body: string
+          body?: string
           created_at?: string
+          edited_at?: string | null
           group_id: string
+          hidden_for?: string[]
           id?: string
+          media_kind?: string | null
+          media_seconds?: number | null
+          media_url?: string | null
         }
         Update: {
           author_id?: string
           body?: string
           created_at?: string
+          edited_at?: string | null
           group_id?: string
+          hidden_for?: string[]
           id?: string
+          media_kind?: string | null
+          media_seconds?: number | null
+          media_url?: string | null
         }
         Relationships: [
           {
