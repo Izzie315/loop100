@@ -46,6 +46,18 @@ export function NoteMedia({
     );
   }
 
+  if (kind === "video") {
+    return (
+      <video
+        src={url}
+        controls
+        preload="metadata"
+        playsInline
+        className="max-h-64 w-full rounded-lg bg-black object-contain"
+      />
+    );
+  }
+
   return (
     <div className="flex items-center gap-2">
       <audio src={url} controls preload="none" className="h-9 w-56 max-w-full" />

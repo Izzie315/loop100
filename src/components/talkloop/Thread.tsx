@@ -3,6 +3,7 @@ import {
   SendHorizonal as DeliverIcon,
   ImagePlus,
   Camera,
+  Clapperboard,
   Mic,
   Square,
   X,
@@ -43,7 +44,7 @@ export type Note = {
 
 type Pending = {
   file: File;
-  kind: "photo" | "voice";
+  kind: "photo" | "video" | "voice";
   previewUrl: string;
   seconds?: number;
 };
@@ -84,6 +85,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const pickRef = useRef<HTMLInputElement | null>(null);
   const captureRef = useRef<HTMLInputElement | null>(null);
+  const videoRef = useRef<HTMLInputElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -208,12 +210,20 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
 
   const onPick = (file: File | undefined) => {
     if (!file) return;
-    if (file.size > 20 * 1024 * 1024) {
-      toast.error("That photo is too large (20 MB max).");
+    const isVideo = file.type.startsWith("video/");
+    const cap = isVideo ? 95 * 1024 * 1024 : 20 * 1024 * 1024;
+    if (file.size > cap) {
+      toast.error(
+        isVideo ? "That video is too large (95 MB max)." : "That photo is too large (20 MB max).",
+      );
       return;
     }
     clearPending();
-    setPending({ file, kind: "photo", previewUrl: URL.createObjectURL(file) });
+    setPending({
+      file,
+      kind: isVideo ? "video" : "photo",
+      previewUrl: URL.createObjectURL(file),
+    });
   };
 
   const startRecording = async () => {
@@ -558,13 +568,22 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
               alt="Attachment preview"
               className="h-14 w-14 rounded-lg object-cover"
             />
+          ) : pending.kind === "video" ? (
+            <video
+              src={pending.previewUrl}
+              muted
+              playsInline
+              className="h-14 w-14 rounded-lg bg-black object-cover"
+            />
           ) : (
             <audio src={pending.previewUrl} controls className="h-9 flex-1" />
           )}
           <span className="flex-1 truncate text-xs text-muted-foreground">
             {pending.kind === "photo"
               ? "Photo ready"
-              : `Recording ready · ${durationLabel(pending.seconds ?? 0)}`}
+              : pending.kind === "video"
+                ? "Video ready"
+                : `Recording ready · ${durationLabel(pending.seconds ?? 0)}`}
           </span>
           <Button
             size="icon"
@@ -625,6 +644,16 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
         >
           <ImagePlus className="h-4 w-4" />
         </Button>
+        <input
+          ref={videoRef}
+          type="file"
+          accept="video/*"
+          className="hidden"
+          onChange={(e) => {
+            onPick(e.target.files?.[0]);
+            e.target.value = "";
+          }}
+        />
         <Button
           type="button"
           size="icon"
@@ -634,6 +663,16 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
           aria-label="Take a photo"
         >
           <Camera className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="h-11 w-11 shrink-0 rounded-full"
+          onClick={() => videoRef.current?.click()}
+          aria-label="Attach a video"
+        >
+          <Clapperboard className="h-4 w-4" />
         </Button>
         <Button
           type="button"

@@ -45,7 +45,13 @@ export function NotesPanel({
       const partyId = row.author_id === account.id ? row.addressee_id : row.author_id;
       const preview =
         row.body?.trim() ||
-        (row.media_kind === "photo" ? "Photo" : row.media_kind === "voice" ? "Voice note" : "");
+        (row.media_kind === "photo"
+          ? "Photo"
+          : row.media_kind === "video"
+            ? "Video"
+            : row.media_kind === "voice"
+              ? "Voice note"
+              : "");
       if (!latest.has(partyId)) latest.set(partyId, { body: preview, created_at: row.created_at });
     }
     const ids = [...latest.keys()];
