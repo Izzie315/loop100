@@ -3,6 +3,23 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { durationLabel } from "@/lib/talkloop";
 
+export type MediaItem = { path: string; kind: string; seconds?: number | null };
+
+export function NoteMediaList({ items }: { items: MediaItem[] }) {
+  if (items.length === 0) return null;
+  if (items.length === 1) {
+    const it = items[0]!;
+    return <NoteMedia path={it.path} kind={it.kind} seconds={it.seconds} />;
+  }
+  return (
+    <div className="grid grid-cols-2 gap-1.5">
+      {items.map((it) => (
+        <NoteMedia key={it.path} path={it.path} kind={it.kind} seconds={it.seconds} />
+      ))}
+    </div>
+  );
+}
+
 export function NoteMedia({
   path,
   kind,

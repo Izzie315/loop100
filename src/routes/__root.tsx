@@ -6,8 +6,14 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import {
+  lazy,
+  useEffect,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -105,7 +111,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
-  errorComponent: ErrorComponent,
+  errorComponent: lazy(() =>
+    Promise.resolve({ default: ErrorComponent as ComponentType<ErrorComponentProps> }),
+  ),
 });
 
 function RootShell({ children }: { children: ReactNode }) {

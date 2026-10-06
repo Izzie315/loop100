@@ -182,6 +182,7 @@ export type Database = {
           group_id: string
           hidden_for: string[]
           id: string
+          media: Json | null
           media_kind: string | null
           media_seconds: number | null
           media_url: string | null
@@ -194,6 +195,7 @@ export type Database = {
           group_id: string
           hidden_for?: string[]
           id?: string
+          media?: Json | null
           media_kind?: string | null
           media_seconds?: number | null
           media_url?: string | null
@@ -206,6 +208,7 @@ export type Database = {
           group_id?: string
           hidden_for?: string[]
           id?: string
+          media?: Json | null
           media_kind?: string | null
           media_seconds?: number | null
           media_url?: string | null
@@ -282,6 +285,7 @@ export type Database = {
           edited_at: string | null
           hidden_for: string[]
           id: string
+          media: Json | null
           media_kind: string | null
           media_seconds: number | null
           media_url: string | null
@@ -295,6 +299,7 @@ export type Database = {
           edited_at?: string | null
           hidden_for?: string[]
           id?: string
+          media?: Json | null
           media_kind?: string | null
           media_seconds?: number | null
           media_url?: string | null
@@ -308,6 +313,7 @@ export type Database = {
           edited_at?: string | null
           hidden_for?: string[]
           id?: string
+          media?: Json | null
           media_kind?: string | null
           media_seconds?: number | null
           media_url?: string | null
