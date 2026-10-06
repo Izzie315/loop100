@@ -27,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { NoteMedia } from "@/components/talkloop/NoteMedia";
+import { NoteMediaList, type MediaItem } from "@/components/talkloop/NoteMedia";
 
 export type Note = {
   id: string;
@@ -40,6 +40,7 @@ export type Note = {
   media_url?: string | null;
   media_kind?: string | null;
   media_seconds?: number | null;
+  media?: MediaItem[] | null;
 };
 
 type Pending = {
@@ -72,14 +73,14 @@ const REACTIONS: { key: string; glyph: string; label: string }[] = [
 const glyphOf = (key: string) => REACTIONS.find((r) => r.key === key)?.glyph ?? key;
 
 const COLUMNS =
-  "id, author_id, addressee_id, body, created_at, edited_at, hidden_for, media_url, media_kind, media_seconds";
+  "id, author_id, addressee_id, body, created_at, edited_at, hidden_for, media_url, media_kind, media_seconds, media";
 
 export function Thread({ party, compact = false }: { party: PublicProfile; compact?: boolean }) {
   const { account } = useAuth();
   const [notes, setNotes] = useState<Note[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
-  const [pending, setPending] = useState<Pending | null>(null);
+  const [pending, setPending] = useState<Pending[]>([]);
   const [recording, setRecording] = useState(false);
   const [recSeconds, setRecSeconds] = useState(0);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -204,8 +205,13 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
   }, []);
 
   const clearPending = () => {
-    if (pending) URL.revokeObjectURL(pending.previewUrl);
-    setPending(null);
+    pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+    setPending([]);
+  };
+
+  const dropPending = (previewUrl: string) => {
+    URL.revokeObjectURL(previewUrl);
+    setPending((prev) => prev.filter((p) => p.previewUrl !== previewUrl));
   };
 
   const onPick = (file: File | undefined) => {
@@ -247,13 +253,10 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
         }
         const ext = type.includes("mp4") ? "m4a" : "webm";
         const file = new File([blob], `voice.${ext}`, { type });
-        clearPending();
-        setPending({
-          file,
-          kind: "voice",
-          previewUrl: URL.createObjectURL(blob),
-          seconds: elapsed,
-        });
+        setPending((prev) => [
+          ...prev,
+          { file, kind: "voice", previewUrl: URL.createObjectURL(blob), seconds: elapsed },
+        ]);
       };
       recorderRef.current = recorder;
       recorder.start();
@@ -277,27 +280,28 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
 
   const deliver = async () => {
     const body = draft.trim();
-    if ((!body && !pending) || !meId || busy || recording) return;
+    if ((!body && pending.length === 0) || !meId || busy || recording) return;
     setBusy(true);
     const attached = pending;
     setDraft("");
-    setPending(null);
+    setPending([]);
 
-    let mediaUrl: string | null = null;
-    if (attached) {
-      const ext = attached.file.name.split(".").pop() || "bin";
+    const media: MediaItem[] = [];
+    for (const it of attached) {
+      const ext = it.file.name.split(".").pop() || "bin";
       const path = `${meId}/${crypto.randomUUID()}.${ext}`;
       const { error } = await supabase.storage
         .from("note-media")
-        .upload(path, attached.file, { contentType: attached.file.type, upsert: false });
-      URL.revokeObjectURL(attached.previewUrl);
+        .upload(path, it.file, { contentType: it.file.type, upsert: false });
+      URL.revokeObjectURL(it.previewUrl);
       if (error) {
-        toast.error("That attachment could not be delivered.");
+        toast.error("One of those attachments could not be delivered.");
         setBusy(false);
         return;
       }
-      mediaUrl = path;
+      media.push({ path, kind: it.kind, seconds: it.seconds ?? null });
     }
+    const mediaUrl = media[0]?.path ?? null;
 
     const { data, error } = await supabase
       .from("notes")
@@ -306,8 +310,9 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
         addressee_id: party.id,
         body,
         media_url: mediaUrl,
-        media_kind: attached?.kind ?? null,
-        media_seconds: attached?.seconds ?? null,
+        media_kind: media[0]?.kind ?? null,
+        media_seconds: media[0]?.seconds ?? null,
+        media: media.length > 0 ? media : null,
       })
       .select(COLUMNS)
       .single();
@@ -337,9 +342,9 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
   const unsend = async (note: Note) => {
     setSelected(null);
     setNotes((prev) => prev.filter((n) => n.id !== note.id));
-    if (note.media_url) {
-      await supabase.storage.from("note-media").remove([note.media_url]);
-    }
+    const paths = (note.media ?? []).map((m) => m.path);
+    if (note.media_url && !paths.includes(note.media_url)) paths.push(note.media_url);
+    if (paths.length > 0) await supabase.storage.from("note-media").remove(paths);
     const { error } = await supabase.from("notes").delete().eq("id", note.id);
     if (error) toast.error("That note could not be pulled back.");
   };
@@ -381,7 +386,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
   const saveEdit = async () => {
     if (!editing) return;
     const body = editDraft.trim();
-    if (!body && !editing.media_url) return;
+    if (!body && !editing.media_url && !(editing.media ?? []).length) return;
     const stamp = new Date().toISOString();
     setNotes((prev) =>
       prev.map((n) => (n.id === editing.id ? { ...n, body, edited_at: stamp } : n)),
@@ -560,40 +565,47 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
 
 
 
-      {pending && (
-        <div className="mb-2 flex items-center gap-3 rounded-xl border border-border bg-muted/50 p-2">
-          {pending.kind === "photo" ? (
-            <img
-              src={pending.previewUrl}
-              alt="Attachment preview"
-              className="h-14 w-14 rounded-lg object-cover"
-            />
-          ) : pending.kind === "video" ? (
-            <video
-              src={pending.previewUrl}
-              muted
-              playsInline
-              className="h-14 w-14 rounded-lg bg-black object-cover"
-            />
-          ) : (
-            <audio src={pending.previewUrl} controls className="h-9 flex-1" />
-          )}
-          <span className="flex-1 truncate text-xs text-muted-foreground">
-            {pending.kind === "photo"
-              ? "Photo ready"
-              : pending.kind === "video"
-                ? "Video ready"
-                : `Recording ready · ${durationLabel(pending.seconds ?? 0)}`}
-          </span>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 shrink-0"
-            onClick={clearPending}
-            aria-label="Discard attachment"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+      {pending.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-2">
+          {pending.map((p) => (
+            <div
+              key={p.previewUrl}
+              className="flex items-center gap-2 rounded-xl border border-border bg-muted/50 p-2"
+            >
+              {p.kind === "photo" ? (
+                <img
+                  src={p.previewUrl}
+                  alt="Attachment preview"
+                  className="h-14 w-14 rounded-lg object-cover"
+                />
+              ) : p.kind === "video" ? (
+                <video
+                  src={p.previewUrl}
+                  muted
+                  playsInline
+                  className="h-14 w-14 rounded-lg bg-black object-cover"
+                />
+              ) : (
+                <audio src={p.previewUrl} controls className="h-9 w-40" />
+              )}
+              <span className="max-w-24 truncate text-xs text-muted-foreground">
+                {p.kind === "photo"
+                  ? "Photo ready"
+                  : p.kind === "video"
+                    ? "Video ready"
+                    : `Recording · ${durationLabel(p.seconds ?? 0)}`}
+              </span>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 shrink-0"
+                onClick={() => dropPending(p.previewUrl)}
+                aria-label="Discard attachment"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
         </div>
       )}
 
@@ -617,9 +629,10 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
           ref={pickRef}
           type="file"
           accept="image/*"
+          multiple
           className="hidden"
           onChange={(e) => {
-            onPick(e.target.files?.[0]);
+            Array.from(e.target.files ?? []).forEach(onPick);
             e.target.value = "";
           }}
         />
@@ -648,9 +661,10 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
           ref={videoRef}
           type="file"
           accept="video/*"
+          multiple
           className="hidden"
           onChange={(e) => {
-            onPick(e.target.files?.[0]);
+            Array.from(e.target.files ?? []).forEach(onPick);
             e.target.value = "";
           }}
         />
@@ -694,7 +708,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
           type="submit"
           size="icon"
           className="h-11 w-11 shrink-0 rounded-full"
-          disabled={busy || recording || (!draft.trim() && !pending)}
+          disabled={busy || recording || (!draft.trim() && pending.length === 0)}
           aria-label="Deliver note"
         >
           <DeliverIcon className="h-4 w-4" />
