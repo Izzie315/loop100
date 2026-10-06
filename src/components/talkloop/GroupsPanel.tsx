@@ -41,6 +41,30 @@ export function GroupsPanel({ contacts }: { contacts: ContactEntry[] }) {
   const [name, setName] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [memberNames, setMemberNames] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    void (async () => {
+      const { data: members } = await supabase
+        .from("group_members")
+        .select("member_id")
+        .eq("group_id", open.id);
+      const ids = ((members ?? []) as { member_id: string }[]).map((m) => m.member_id);
+      if (ids.length === 0) return;
+      const { data: profiles } = await supabase.rpc("get_profiles_public", { _ids: ids });
+      const map: Record<string, string> = {};
+      for (const p of ((profiles as PublicProfile[] | null) ?? [])) {
+        const saved = contacts.find((c) => c.id === p.id);
+        map[p.id] = saved ? contactName(saved) : fullName(p);
+      }
+      if (!cancelled) setMemberNames(map);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, contacts]);
 
   const load = useCallback(async () => {
     if (!profile) return;
