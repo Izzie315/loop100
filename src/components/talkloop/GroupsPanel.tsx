@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -19,20 +19,11 @@ import { cn } from "@/lib/utils";
 import {
   contactName,
   fullName,
-  timeLabel,
   type ContactEntry,
   type PublicProfile,
 } from "@/lib/talkloop";
 
 type Loop = { id: string; name: string; owner_id: string; created_at: string };
-type GroupNote = {
-  id: string;
-  group_id: string;
-  author_id: string;
-  body: string;
-  created_at: string;
-};
-
 export function GroupsPanel({ contacts }: { contacts: ContactEntry[] }) {
   const { profile } = useAuth();
   const [loops, setLoops] = useState<Loop[]>([]);
