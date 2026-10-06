@@ -224,12 +224,10 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
       );
       return;
     }
-    clearPending();
-    setPending({
-      file,
-      kind: isVideo ? "video" : "photo",
-      previewUrl: URL.createObjectURL(file),
-    });
+    setPending((prev) => [
+      ...prev,
+      { file, kind: isVideo ? "video" : "photo", previewUrl: URL.createObjectURL(file) },
+    ]);
   };
 
   const startRecording = async () => {
@@ -434,8 +432,14 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
                     : "bg-secondary text-secondary-foreground rounded-bl-sm",
                 )}
               >
-                {n.media_url && n.media_kind && (
-                  <NoteMedia path={n.media_url} kind={n.media_kind} seconds={n.media_seconds} />
+                {((n.media ?? []).length > 0 || (n.media_url && n.media_kind)) && (
+                  <NoteMediaList
+                    items={
+                      (n.media ?? []).length > 0
+                        ? (n.media ?? [])
+                        : [{ path: n.media_url!, kind: n.media_kind!, seconds: n.media_seconds ?? null }]
+                    }
+                  />
                 )}
                 {n.body && <p className="whitespace-pre-wrap break-words">{n.body}</p>}
                 <p

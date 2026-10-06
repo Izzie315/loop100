@@ -469,7 +469,7 @@ export function GroupThread({
                       items={
                         (n.media ?? []).length > 0
                           ? (n.media ?? [])
-                          : [{ path: n.media_url!, kind: n.media_kind!, seconds: n.media_seconds }]
+                          : [{ path: n.media_url!, kind: n.media_kind!, seconds: n.media_seconds ?? null }]
                       }
                     />
                   )}
