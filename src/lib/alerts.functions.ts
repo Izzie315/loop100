@@ -80,9 +80,9 @@ export const raiseAlert = createServerFn({ method: "POST" })
       if (!n || n.author_id !== userId) return { ok: false };
       const [{ data: g }, { data: members }] = await Promise.all([
         supabase.from("groups").select("name").eq("id", n.group_id).maybeSingle(),
-        supabase.from("group_members").select("account_id").eq("group_id", n.group_id),
+        supabase.from("group_members").select("member_id").eq("group_id", n.group_id),
       ]);
-      const ids = (members ?? []).map((m) => m.account_id).filter((id) => id !== userId);
+      const ids = (members ?? []).map((m) => m.member_id).filter((id) => id !== userId);
       await pushTo(ids, {
         title: g?.name ? `${who} · ${g.name}` : who,
         body: preview(n.body, !!n.media_url),
