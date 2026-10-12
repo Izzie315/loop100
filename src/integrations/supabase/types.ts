@@ -348,6 +348,30 @@ export type Database = {
         }
         Relationships: []
       }
+      push_endpoints: {
+        Row: {
+          account_id: string
+          auth_key: string
+          created_at: string
+          endpoint: string
+          p256dh: string
+        }
+        Insert: {
+          account_id: string
+          auth_key: string
+          created_at?: string
+          endpoint: string
+          p256dh: string
+        }
+        Update: {
+          account_id?: string
+          auth_key?: string
+          created_at?: string
+          endpoint?: string
+          p256dh?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
