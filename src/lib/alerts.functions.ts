@@ -11,7 +11,7 @@ type Alert = { title: string; body: string; tag: string; kind: string };
 
 async function pushTo(accountIds: string[], alert: Alert) {
   if (accountIds.length === 0) return;
-  const raw = process.env.VAPID_PRIVATE_JWK;
+  const raw = process.env["VAPID_PRIVATE_JWK"];
   if (!raw) return;
   const privateJWK = JSON.parse(raw);
   const { buildPushHTTPRequest } = await import("@pushforge/builder");
