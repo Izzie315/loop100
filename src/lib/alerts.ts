@@ -43,8 +43,8 @@ export async function enableAlerts(accountId: string) {
   const { error } = await supabase.from("push_endpoints").insert({
     endpoint: sub.endpoint,
     account_id: accountId,
-    p256dh: j.keys?.p256dh ?? "",
-    auth_key: j.keys?.auth ?? "",
+    p256dh: j.keys?.["p256dh"] ?? "",
+    auth_key: j.keys?.["auth"] ?? "",
   });
   if (error) throw error;
 }
@@ -60,8 +60,8 @@ export async function refreshAlerts(accountId: string) {
   await supabase.from("push_endpoints").upsert({
     endpoint: sub.endpoint,
     account_id: accountId,
-    p256dh: j.keys?.p256dh ?? "",
-    auth_key: j.keys?.auth ?? "",
+    p256dh: j.keys?.["p256dh"] ?? "",
+    auth_key: j.keys?.["auth"] ?? "",
   });
   return true;
 }

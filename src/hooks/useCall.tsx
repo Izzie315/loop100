@@ -1,3 +1,4 @@
+import { notifyParty } from "@/lib/alerts";
 import {
   createContext,
   useCallback,
@@ -128,6 +129,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
         return;
       }
       setActiveCall(data.id);
+      notifyParty("call", data.id);
 
       try {
         const link = await buildLink();
