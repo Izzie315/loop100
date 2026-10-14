@@ -1,3 +1,4 @@
+import { notifyParty } from "@/lib/alerts";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   SendHorizonal as DeliverIcon,
@@ -316,6 +317,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
       .single();
     if (error) toast.error("That note could not be delivered.");
     if (data) {
+      notifyParty("note", (data as Note).id);
       setNotes((prev) =>
         prev.some((n) => n.id === (data as Note).id) ? prev : [...prev, data as Note],
       );

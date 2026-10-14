@@ -1,3 +1,4 @@
+import { notifyParty } from "@/lib/alerts";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   SendHorizonal as DeliverIcon,
@@ -333,6 +334,7 @@ export function GroupThread({
       .single();
     if (error) toast.error("That note could not be delivered.");
     if (data) {
+      notifyParty("loop", (data as LoopNote).id);
       setNotes((prev) =>
         prev.some((n) => n.id === (data as LoopNote).id) ? prev : [...prev, data as LoopNote],
       );
