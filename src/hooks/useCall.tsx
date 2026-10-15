@@ -1,4 +1,5 @@
 import { notifyParty } from "@/lib/alerts";
+import { primeAudio, startRinging, stopRinging } from "@/lib/ringtone";
 import {
   createContext,
   useCallback,
@@ -299,6 +300,47 @@ export function CallProvider({ children }: { children: ReactNode }) {
       void supabase.removeChannel(channel);
     };
   }, [account, callId]);
+
+  /* Ringtone / ringback */
+  useEffect(() => {
+    if (phase === "incoming") startRinging("incoming");
+    else if (phase === "dialing") startRinging("outgoing");
+    else stopRinging();
+    return () => stopRinging();
+  }, [phase]);
+
+  useEffect(() => primeAudio(), []);
+
+  /* A call may already be ringing when the app opens from an alert */
+  useEffect(() => {
+    if (!account) return;
+    const check = async () => {
+      if (callIdRef.current) return;
+      const since = new Date(Date.now() - 60_000).toISOString();
+      const { data: rows } = await supabase
+        .from("calls")
+        .select("id, caller_id")
+        .eq("callee_id", account.id)
+        .eq("status", "ringing")
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const row = rows?.[0];
+      if (!row || callIdRef.current) return;
+      const { data } = await supabase.rpc("get_profiles_public", { _ids: [row.caller_id] });
+      const caller = (data as PublicProfile[] | null)?.[0];
+      if (!caller || callIdRef.current) return;
+      setActiveCall(row.id);
+      setParty(caller);
+      setPhase("incoming");
+    };
+    void check();
+    const onVis = () => {
+      if (document.visibilityState === "visible") void check();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [account]);
 
   /* Call timer */
   useEffect(() => {
