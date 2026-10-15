@@ -150,6 +150,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
 
   const acceptCall = useCallback(async () => {
     if (!account || !callIdRef.current) return;
+    stopRinging();
     roleRef.current = "callee";
     try {
       const link = await buildLink();
@@ -168,7 +169,23 @@ export function CallProvider({ children }: { children: ReactNode }) {
         return;
       }
       await link.setRemoteDescription(new RTCSessionDescription(offer));
-      for (const candidate of pendingIce.current) await link.addIceCandidate(candidate);
+      // Candidates the caller relayed before we were listening.
+      const { data: earlier } = await supabase
+        .from("call_signals")
+        .select("payload")
+        .eq("call_id", callIdRef.current)
+        .eq("kind", "ice")
+        .neq("origin_id", account.id);
+      const seen = new Set<string>();
+      for (const c of [
+        ...((earlier ?? []).map((r) => r.payload) as RTCIceCandidateInit[]),
+        ...pendingIce.current,
+      ]) {
+        const key = JSON.stringify(c);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        await link.addIceCandidate(c).catch(() => undefined);
+      }
       pendingIce.current = [];
       const answer = await link.createAnswer();
       await link.setLocalDescription(answer);
