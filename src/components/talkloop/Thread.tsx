@@ -218,10 +218,10 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
   const onPick = (file: File | undefined) => {
     if (!file) return;
     const isVideo = file.type.startsWith("video/");
-    const cap = isVideo ? 95 * 1024 * 1024 : 20 * 1024 * 1024;
+    const cap = isVideo ? 1000 * 1024 * 1024 : 20 * 1024 * 1024;
     if (file.size > cap) {
       toast.error(
-        isVideo ? "That video is too large (95 MB max)." : "That photo is too large (20 MB max).",
+        isVideo ? "That video is too large (1 GB max)." : "That photo is too large (20 MB max).",
       );
       return;
     }
