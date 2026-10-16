@@ -1,6 +1,12 @@
-import { describe, expect, test } from "bun:test";
+import { describe, it as test } from "node:test";
+import assert from "node:assert/strict";
 import { appearanceOf, initialEntry } from "./appearance";
 import { mediaFormat } from "./media-format";
+
+const expect = (actual: unknown) => ({
+  toBe: (expected: unknown) => assert.equal(actual, expected),
+  toEqual: (expected: unknown) => assert.deepEqual(actual, expected),
+});
 
 describe("entry preferences", () => {
   test("first setup is light", () => expect(appearanceOf(null)).toBe("light"));
