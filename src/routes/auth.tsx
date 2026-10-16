@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { digitsOf, formatNumber, isValidNumber } from "@/lib/talkloop";
+import { initialEntry } from "@/lib/appearance";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -20,6 +21,8 @@ export const Route = createFileRoute("/auth")({
           "Create your TalkLoop account, claim your own TalkLoop number, and start calling instantly.",
       },
       { property: "og:title", content: "Sign in to TalkLoop" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       {
         property: "og:description",
         content: "Claim your TalkLoop number and start calling instantly.",
@@ -32,7 +35,7 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const { account, loading } = useAuth();
-  const [mode, setMode] = useState<"signup" | "signin">("signup");
+  const [mode, setMode] = useState<"signup" | "signin">(initialEntry);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");

@@ -2,15 +2,14 @@ import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-
-type Mode = "dark" | "light";
+import { appearanceOf, type Mode } from "@/lib/appearance";
 
 export function ThemeToggle() {
-  const [mode, setMode] = useState<Mode>("dark");
+  const [mode, setMode] = useState<Mode>("light");
 
   useEffect(() => {
     const saved = window.localStorage.getItem("tl-theme");
-    setMode(saved === "light" ? "light" : "dark");
+    setMode(appearanceOf(saved));
   }, []);
 
   const flip = () => {

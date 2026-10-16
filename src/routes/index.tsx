@@ -45,6 +45,8 @@ export const Route = createFileRoute("/")({
           "TalkLoop gives every person their own number for instant voice calls, in-call notes, and notes that wait when someone can't pick up.",
       },
       { property: "og:title", content: "TalkLoop — Live Calls on Your Own Number" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       {
         property: "og:description",
         content:
@@ -235,10 +237,10 @@ function TalkLoopApp() {
   ];
 
   return (
-    <main className="mx-auto flex h-screen w-full max-w-md flex-col overflow-hidden px-4 pb-20 pt-6 md:max-w-5xl md:flex-row md:gap-8 md:px-8 md:pb-8 md:pt-10">
+    <main className="tl-shell mx-auto flex h-dvh w-full max-w-md flex-col overflow-hidden px-3 pb-20 pt-4 md:max-w-5xl md:flex-row md:gap-8 md:px-8 md:pb-8 md:pt-10">
       {/* Desktop sidebar / mobile header */}
       <aside className="mb-5 md:mb-0 md:w-60 md:shrink-0">
-        <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 md:block">
+        <header className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-1 md:block">
           <div className="min-w-0">
             <p className="font-mono text-[10px] tracking-[0.45em] text-primary">TALKLOOP</p>
             <h1 className="truncate text-lg font-semibold">{profile?.first_name}</h1>
@@ -291,7 +293,7 @@ function TalkLoopApp() {
         </nav>
       </aside>
 
-      <section className="flex min-h-0 flex-1 flex-col overflow-y-auto md:panel md:h-full md:p-6">
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto md:panel md:h-full md:p-6">
         {tab === "keypad" && <Dialer />}
         {tab === "notes" && <NotesPanel openParty={openParty} setOpenParty={setOpenParty} />}
         {tab === "contacts" && (
