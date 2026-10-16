@@ -23,12 +23,12 @@ export async function uploadMedia(path: string, file: File, progress: (value: nu
   const { Upload } = await import("tus-js-client");
   const { data } = await supabase.auth.getSession();
   if (!data.session) throw new Error("Please sign in again.");
-  const origin = import.meta.env.VITE_SUPABASE_URL;
+  const origin = import.meta.env['VITE_SUPABASE_URL'];
   if (!origin) throw new Error("Uploads are unavailable.");
   await new Promise<void>((resolve, reject) => {
     const upload = new Upload(file, {
       endpoint: `${origin}/storage/v1/upload/resumable`,
-      headers: { authorization: `Bearer ${data.session.access_token}`, apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+      headers: { authorization: `Bearer ${data.session.access_token}`, apikey: import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] },
       metadata: { bucketName: "note-media", objectName: path, contentType: file.type, cacheControl: "3600" },
       chunkSize: 6 * 1024 * 1024,
       retryDelays: [0, 1000, 3000, 5000, 10000, 20000],

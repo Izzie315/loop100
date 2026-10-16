@@ -10,5 +10,4 @@
 <!-- LOVABLE:END -->
 
 - Attachment normalization and chunked uploads live in shared browser-only helpers, loaded on demand, so direct and loop notes behave consistently without increasing initial page cost.
-- Attachment stacks use Embla and load only the active item to avoid fetching every video during scrolling.
 - First-visit preferences use shared pure helpers with regression tests; saved appearance choices override the default.
