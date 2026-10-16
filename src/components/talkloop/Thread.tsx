@@ -291,7 +291,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
       const path = `${meId}/${crypto.randomUUID()}.${ext}`;
       const { error } = await supabase.storage
         .from("note-media")
-        .upload(path, it.file, { contentType: it.file.type, upsert: false });
+        .upload(path, it.file, { contentType: it.file.type || (it.kind === "video" ? "video/mp4" : it.kind === "photo" ? "image/jpeg" : "audio/webm"), upsert: false, cacheControl: "3600" });
       URL.revokeObjectURL(it.previewUrl);
       if (error) {
         toast.error("One of those attachments could not be delivered.");

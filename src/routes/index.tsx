@@ -33,6 +33,7 @@ import { NumberSettings } from "@/components/talkloop/NumberSettings";
 import { HistoryPanel } from "@/components/talkloop/HistoryPanel";
 import { GroupsPanel } from "@/components/talkloop/GroupsPanel";
 import { AlertsToggle } from "@/components/talkloop/AlertsToggle";
+import { ThemeToggle } from "@/components/talkloop/ThemeToggle";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -251,6 +252,7 @@ function TalkLoopApp() {
               <Pencil className="h-3 w-3 shrink-0" />
             </button>
           </div>
+          <ThemeToggle />
           <AlertsToggle />
           <Button
             size="icon"
