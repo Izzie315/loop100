@@ -2,7 +2,6 @@
 
 - [paused] Home-screen bookmark resilience across subdomain changes
 - [paused, awaiting discussion] iMessage / real phone-number integration
-- [blocked: credits] Upload helpers added but not connected; processing capacity checked with no exhaustion
-- [blocked: credits] Finish cross-device media; basic header and viewport fixes added
-- [blocked: credits] Swipeable attachment stacks
-- [done, browser untested] Sign-in and light-mode defaults
+- [done] Sign-in and light-mode defaults
+- [done] Parallel uploads, notes list filter, mobile input bar, preview cleanup
+- [done] Swipeable attachment stacks (scroll-snap carousel with dots)

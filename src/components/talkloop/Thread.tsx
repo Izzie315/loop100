@@ -202,7 +202,9 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
       recorderRef.current?.stream.getTracks().forEach((t) => t.stop());
+      pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const clearPending = () => {
@@ -285,20 +287,24 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
     setDraft("");
     setPending([]);
 
-    const media: MediaItem[] = [];
-    for (const it of attached) {
-      const ext = it.file.name.split(".").pop() || "bin";
-      const path = `${meId}/${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage
-        .from("note-media")
-        .upload(path, it.file, { contentType: it.file.type || (it.kind === "video" ? "video/mp4" : it.kind === "photo" ? "image/jpeg" : "audio/webm"), upsert: false, cacheControl: "3600" });
-      URL.revokeObjectURL(it.previewUrl);
-      if (error) {
-        toast.error("One of those attachments could not be delivered.");
-        setBusy(false);
-        return;
-      }
-      media.push({ path, kind: it.kind, seconds: it.seconds ?? null });
+    let media: MediaItem[];
+    try {
+      media = await Promise.all(
+        attached.map(async (it) => {
+          const ext = it.file.name.split(".").pop() || "bin";
+          const path = `${meId}/${crypto.randomUUID()}.${ext}`;
+          const { error } = await supabase.storage
+            .from("note-media")
+            .upload(path, it.file, { contentType: it.file.type || (it.kind === "video" ? "video/mp4" : it.kind === "photo" ? "image/jpeg" : "audio/webm"), upsert: false, cacheControl: "3600" });
+          URL.revokeObjectURL(it.previewUrl);
+          if (error) throw error;
+          return { path, kind: it.kind, seconds: it.seconds ?? null };
+        }),
+      );
+    } catch {
+      toast.error("One of those attachments could not be delivered.");
+      setBusy(false);
+      return;
     }
     const mediaUrl = media[0]?.path ?? null;
 
@@ -625,7 +631,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
       )}
 
       <form
-        className="flex items-center gap-2 border-t border-border pt-3"
+        className="flex items-center gap-1 border-t border-border pt-3 sm:gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           void deliver();
@@ -657,7 +663,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
           type="button"
           size="icon"
           variant="ghost"
-          className="h-11 w-11 shrink-0 rounded-full"
+          className="h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11"
           onClick={() => pickRef.current?.click()}
           aria-label="Attach a photo"
         >
@@ -678,7 +684,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
           type="button"
           size="icon"
           variant="ghost"
-          className="h-11 w-11 shrink-0 rounded-full"
+          className="h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11"
           onClick={() => captureRef.current?.click()}
           aria-label="Take a photo"
         >
@@ -688,7 +694,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
           type="button"
           size="icon"
           variant="ghost"
-          className="h-11 w-11 shrink-0 rounded-full"
+          className="h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11"
           onClick={() => videoRef.current?.click()}
           aria-label="Attach a video"
         >
@@ -698,7 +704,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
           type="button"
           size="icon"
           variant={recording ? "default" : "ghost"}
-          className="h-11 w-11 shrink-0 rounded-full"
+          className="h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11"
           onClick={() => (recording ? stopRecording() : void startRecording())}
           aria-label={recording ? "Stop recording" : "Record your voice"}
         >
@@ -713,7 +719,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
         <Button
           type="submit"
           size="icon"
-          className="h-11 w-11 shrink-0 rounded-full"
+          className="h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11"
           disabled={busy || recording || (!draft.trim() && pending.length === 0)}
           aria-label="Deliver note"
         >
