@@ -702,7 +702,7 @@ export function GroupThread({
           type="button"
           size="icon"
           variant="ghost"
-          className="h-11 w-11 shrink-0 rounded-full"
+          className="h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11"
           onClick={() => pickRef.current?.click()}
           aria-label="Attach a photo"
         >
@@ -712,7 +712,7 @@ export function GroupThread({
           type="button"
           size="icon"
           variant="ghost"
-          className="h-11 w-11 shrink-0 rounded-full"
+          className="h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11"
           onClick={() => captureRef.current?.click()}
           aria-label="Take a photo"
         >
@@ -722,7 +722,7 @@ export function GroupThread({
           type="button"
           size="icon"
           variant="ghost"
-          className="h-11 w-11 shrink-0 rounded-full"
+          className="h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11"
           onClick={() => videoRef.current?.click()}
           aria-label="Attach a video"
         >
@@ -732,7 +732,7 @@ export function GroupThread({
           type="button"
           size="icon"
           variant={recording ? "default" : "ghost"}
-          className="h-11 w-11 shrink-0 rounded-full"
+          className="h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11"
           onClick={() => (recording ? stopRecording() : void startRecording())}
           aria-label={recording ? "Stop recording" : "Record your voice"}
         >
@@ -747,7 +747,7 @@ export function GroupThread({
         <Button
           type="submit"
           size="icon"
-          className="h-11 w-11 shrink-0 rounded-full"
+          className="h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11"
           disabled={busy || recording || (!draft.trim() && pending.length === 0)}
           aria-label="Deliver note"
         >
