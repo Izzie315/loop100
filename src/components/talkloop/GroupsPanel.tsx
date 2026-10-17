@@ -127,7 +127,7 @@ export function GroupsPanel({ contacts }: { contacts: ContactEntry[] }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-base font-semibold">Loops</h2>
+        <h2 className="text-base font-semibold">Group Chats</h2>
         <Button
           size="icon"
           className="h-9 w-9 rounded-full"
