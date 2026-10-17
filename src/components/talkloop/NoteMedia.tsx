@@ -109,12 +109,14 @@ export function NoteMedia({
 }
 
 function VideoPreview({ url }: { url: string }) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [playing, setPlaying] = useState(false);
   return (
     <div className="relative overflow-hidden rounded-lg">
       <video
+        ref={videoRef}
         src={`${url}#t=0.001`}
-        controls
+        controls={!playing}
         preload="metadata"
         playsInline
         onPlay={() => setPlaying(true)}
@@ -122,13 +124,14 @@ function VideoPreview({ url }: { url: string }) {
         onEnded={() => setPlaying(false)}
         className="block max-h-64 w-full bg-black object-contain"
       />
-      <div
-        aria-hidden="true"
-        className={cn(
-          "pointer-events-none absolute inset-0 bg-black/40",
-          playing ? "opacity-0 transition-none" : "opacity-100 transition-opacity duration-300",
-        )}
-      />
+      {playing && (
+        <button
+          type="button"
+          aria-label="Pause video"
+          className="absolute inset-0 cursor-pointer"
+          onClick={() => videoRef.current?.pause()}
+        />
+      )}
     </div>
   );
 }
