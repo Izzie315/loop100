@@ -202,7 +202,9 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
       recorderRef.current?.stream.getTracks().forEach((t) => t.stop());
+      pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const clearPending = () => {
@@ -629,7 +631,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
       )}
 
       <form
-        className="flex items-center gap-2 border-t border-border pt-3"
+        className="flex items-center gap-1 border-t border-border pt-3 sm:gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           void deliver();
