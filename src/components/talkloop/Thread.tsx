@@ -285,20 +285,24 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
     setDraft("");
     setPending([]);
 
-    const media: MediaItem[] = [];
-    for (const it of attached) {
-      const ext = it.file.name.split(".").pop() || "bin";
-      const path = `${meId}/${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage
-        .from("note-media")
-        .upload(path, it.file, { contentType: it.file.type || (it.kind === "video" ? "video/mp4" : it.kind === "photo" ? "image/jpeg" : "audio/webm"), upsert: false, cacheControl: "3600" });
-      URL.revokeObjectURL(it.previewUrl);
-      if (error) {
-        toast.error("One of those attachments could not be delivered.");
-        setBusy(false);
-        return;
-      }
-      media.push({ path, kind: it.kind, seconds: it.seconds ?? null });
+    let media: MediaItem[];
+    try {
+      media = await Promise.all(
+        attached.map(async (it) => {
+          const ext = it.file.name.split(".").pop() || "bin";
+          const path = `${meId}/${crypto.randomUUID()}.${ext}`;
+          const { error } = await supabase.storage
+            .from("note-media")
+            .upload(path, it.file, { contentType: it.file.type || (it.kind === "video" ? "video/mp4" : it.kind === "photo" ? "image/jpeg" : "audio/webm"), upsert: false, cacheControl: "3600" });
+          URL.revokeObjectURL(it.previewUrl);
+          if (error) throw error;
+          return { path, kind: it.kind, seconds: it.seconds ?? null };
+        }),
+      );
+    } catch {
+      toast.error("One of those attachments could not be delivered.");
+      setBusy(false);
+      return;
     }
     const mediaUrl = media[0]?.path ?? null;
 

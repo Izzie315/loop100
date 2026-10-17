@@ -30,7 +30,9 @@ export function NotesPanel({
     const { data } = await supabase
       .from("notes")
       .select("id, author_id, addressee_id, body, created_at, media_kind")
-      .order("created_at", { ascending: false });
+      .or(`author_id.eq.${account.id},addressee_id.eq.${account.id}`)
+      .order("created_at", { ascending: false })
+      .limit(500);
 
     const rows = (data ?? []) as {
       author_id: string;
