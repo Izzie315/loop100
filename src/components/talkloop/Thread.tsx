@@ -19,7 +19,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { durationLabel, timeLabel, type PublicProfile } from "@/lib/talkloop";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -710,11 +709,17 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
         >
           {recording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
         </Button>
-        <Input
+        <textarea
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          rows={1}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            const el = e.currentTarget;
+            el.style.height = "auto";
+            el.style.height = `${Math.min(el.scrollHeight, 128)}px`;
+          }}
           placeholder={`Note to ${party.first_name}`}
-          className="bg-muted border-border h-11 rounded-full"
+          className="bg-muted border-border min-h-11 max-h-32 min-w-0 flex-1 resize-none rounded-3xl border px-4 py-2.5 text-sm leading-5 outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
         <Button
           type="submit"

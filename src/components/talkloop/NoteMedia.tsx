@@ -95,15 +95,7 @@ export function NoteMedia({
   }
 
   if (kind === "video") {
-    return (
-      <video
-        src={url}
-        controls
-        preload="metadata"
-        playsInline
-        className="max-h-64 w-full rounded-lg bg-black object-contain"
-      />
-    );
+    return <VideoPreview url={url} />;
   }
 
   return (
@@ -112,6 +104,31 @@ export function NoteMedia({
       {typeof seconds === "number" && seconds > 0 && (
         <span className="font-mono text-[10px] opacity-70">{durationLabel(seconds)}</span>
       )}
+    </div>
+  );
+}
+
+function VideoPreview({ url }: { url: string }) {
+  const [playing, setPlaying] = useState(false);
+  return (
+    <div className="relative overflow-hidden rounded-lg">
+      <video
+        src={`${url}#t=0.001`}
+        controls
+        preload="metadata"
+        playsInline
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => setPlaying(false)}
+        className="block max-h-64 w-full bg-black object-contain"
+      />
+      <div
+        aria-hidden="true"
+        className={cn(
+          "pointer-events-none absolute inset-0 bg-black/40",
+          playing ? "opacity-0 transition-none" : "opacity-100 transition-opacity duration-300",
+        )}
+      />
     </div>
   );
 }
