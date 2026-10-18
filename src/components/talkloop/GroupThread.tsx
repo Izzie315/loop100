@@ -1,3 +1,5 @@
+import { mediaFormat } from "@/lib/media-format";
+import { useNoteScroll } from "@/hooks/useNoteScroll";
 import { notifyParty } from "@/lib/alerts";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -94,7 +96,7 @@ export function GroupThread({
   const [editing, setEditing] = useState<LoopNote | null>(null);
   const [editDraft, setEditDraft] = useState("");
 
-  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const pickRef = useRef<HTMLInputElement | null>(null);
   const captureRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLInputElement | null>(null);
@@ -211,10 +213,6 @@ export function GroupThread({
   }, [loopId]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [notes.length]);
-
-  useEffect(() => {
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
       recorderRef.current?.stream.getTracks().forEach((t) => t.stop());
@@ -235,7 +233,7 @@ export function GroupThread({
 
   const onPick = (file: File | undefined) => {
     if (!file) return;
-    const isVideo = file.type.startsWith("video/");
+    const isVideo = mediaFormat(file).kind === "video";
     const cap = isVideo ? 1000 * 1024 * 1024 : 20 * 1024 * 1024;
     if (file.size > cap) {
       toast.error(
@@ -300,25 +298,20 @@ export function GroupThread({
     if ((!body && pending.length === 0) || !meId || busy || recording) return;
     setBusy(true);
     const attached = pending;
-    setDraft("");
-    setPending([]);
+    setUploadProgress(0);
 
     let media: MediaItem[];
     try {
-      media = await Promise.all(
-        attached.map(async (it) => {
-          const ext = it.file.name.split(".").pop() || "bin";
-          const path = `${meId}/${crypto.randomUUID()}.${ext}`;
-          const { error } = await supabase.storage
-            .from("note-media")
-            .upload(path, it.file, { contentType: it.file.type || (it.kind === "video" ? "video/mp4" : it.kind === "photo" ? "image/jpeg" : "audio/webm"), upsert: false, cacheControl: "3600" });
-          URL.revokeObjectURL(it.previewUrl);
-          if (error) throw error;
-          return { path, kind: it.kind, seconds: it.seconds ?? null };
-        }),
+      const [{ prepareMedia, uploadMedia }, { uploadAttachments }] = await Promise.all([
+        import("@/lib/media-upload"), import("@/lib/media-batch"),
+      ]);
+      media = await uploadAttachments(
+        attached, meId, prepareMedia, uploadMedia,
+        (paths) => supabase.storage.from("note-media").remove(paths),
+        setUploadProgress,
       );
     } catch {
-      toast.error("One of those attachments could not be delivered.");
+      toast.error("Attachments could not be delivered. Please try again; your draft is still here.");
       setBusy(false);
       return;
     }
@@ -337,8 +330,13 @@ export function GroupThread({
       })
       .select(COLUMNS)
       .single();
-    if (error) toast.error("That note could not be delivered.");
+    if (error) {
+      if (media.length) await supabase.storage.from("note-media").remove(media.map((item) => item.path));
+      toast.error("That note could not be delivered. Your draft is still here.");
+    }
     if (data) {
+      setDraft("");
+      clearPending();
       notifyParty("loop", (data as LoopNote).id);
       setNotes((prev) =>
         prev.some((n) => n.id === (data as LoopNote).id) ? prev : [...prev, data as LoopNote],
@@ -351,6 +349,8 @@ export function GroupThread({
     () => notes.filter((n) => !(n.hidden_for ?? []).includes(meId ?? "")),
     [notes, meId],
   );
+
+  const { scrollRef, contentRef, onScroll } = useNoteScroll(loopId, listed.at(-1)?.id ?? null);
 
   const beginPress = (note: LoopNote) => {
     if (pressRef.current) clearTimeout(pressRef.current);
@@ -433,7 +433,8 @@ export function GroupThread({
         <h2 className="truncate text-base font-semibold">{loopName}</h2>
       </div>
 
-      <div className="flex-1 space-y-2 overflow-y-auto px-1 py-3">
+      <div ref={scrollRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-1 py-3">
+        <div ref={contentRef} className="space-y-2">
         {listed.length === 0 && (
           <p className="py-8 text-center text-sm text-muted-foreground">
             No notes yet. Say something.
@@ -511,7 +512,7 @@ export function GroupThread({
             </div>
           );
         })}
-        <div ref={bottomRef} />
+        </div>
       </div>
 
       <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
@@ -606,6 +607,9 @@ export function GroupThread({
         </DialogContent>
       </Dialog>
 
+      {busy && pending.length > 0 && (
+        <p role="status" className="py-1 text-xs text-muted-foreground">Uploading… {uploadProgress}%</p>
+      )}
       {pending.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-2">
           {pending.map((p) => (
@@ -640,6 +644,7 @@ export function GroupThread({
                 size="icon"
                 variant="ghost"
                 className="h-7 w-7 shrink-0"
+                disabled={busy}
                 onClick={() => dropPending(p.previewUrl)}
                 aria-label="Discard attachment"
               >
@@ -668,6 +673,7 @@ export function GroupThread({
       >
         <input
           ref={pickRef}
+          disabled={busy}
           type="file"
           accept="image/*"
           multiple
@@ -679,6 +685,7 @@ export function GroupThread({
         />
         <input
           ref={captureRef}
+          disabled={busy}
           type="file"
           accept="image/*"
           capture="environment"
@@ -690,6 +697,7 @@ export function GroupThread({
         />
         <input
           ref={videoRef}
+          disabled={busy}
           type="file"
           accept="video/*"
           multiple
@@ -704,6 +712,7 @@ export function GroupThread({
           size="icon"
           variant="ghost"
           className="h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11"
+          disabled={busy}
           onClick={() => pickRef.current?.click()}
           aria-label="Attach a photo"
         >
@@ -714,6 +723,7 @@ export function GroupThread({
           size="icon"
           variant="ghost"
           className="h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11"
+          disabled={busy}
           onClick={() => captureRef.current?.click()}
           aria-label="Take a photo"
         >
@@ -724,6 +734,7 @@ export function GroupThread({
           size="icon"
           variant="ghost"
           className="h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11"
+          disabled={busy}
           onClick={() => videoRef.current?.click()}
           aria-label="Attach a video"
         >
@@ -734,12 +745,14 @@ export function GroupThread({
           size="icon"
           variant={recording ? "default" : "ghost"}
           className="h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11"
+          disabled={busy}
           onClick={() => (recording ? stopRecording() : void startRecording())}
           aria-label={recording ? "Stop recording" : "Record your voice"}
         >
           {recording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
         </Button>
         <textarea
+          disabled={busy}
           value={draft}
           rows={1}
           onChange={(e) => {

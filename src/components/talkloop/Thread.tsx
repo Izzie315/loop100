@@ -1,3 +1,5 @@
+import { mediaFormat } from "@/lib/media-format";
+import { useNoteScroll } from "@/hooks/useNoteScroll";
 import { notifyParty } from "@/lib/alerts";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -83,7 +85,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
   const [pending, setPending] = useState<Pending[]>([]);
   const [recording, setRecording] = useState(false);
   const [recSeconds, setRecSeconds] = useState(0);
-  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const pickRef = useRef<HTMLInputElement | null>(null);
   const captureRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLInputElement | null>(null);
@@ -194,10 +196,6 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
   }, [meId, party.id]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [notes.length]);
-
-  useEffect(() => {
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
       recorderRef.current?.stream.getTracks().forEach((t) => t.stop());
@@ -218,7 +216,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
 
   const onPick = (file: File | undefined) => {
     if (!file) return;
-    const isVideo = file.type.startsWith("video/");
+    const isVideo = mediaFormat(file).kind === "video";
     const cap = isVideo ? 1000 * 1024 * 1024 : 20 * 1024 * 1024;
     if (file.size > cap) {
       toast.error(
@@ -283,25 +281,20 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
     if ((!body && pending.length === 0) || !meId || busy || recording) return;
     setBusy(true);
     const attached = pending;
-    setDraft("");
-    setPending([]);
+    setUploadProgress(0);
 
     let media: MediaItem[];
     try {
-      media = await Promise.all(
-        attached.map(async (it) => {
-          const ext = it.file.name.split(".").pop() || "bin";
-          const path = `${meId}/${crypto.randomUUID()}.${ext}`;
-          const { error } = await supabase.storage
-            .from("note-media")
-            .upload(path, it.file, { contentType: it.file.type || (it.kind === "video" ? "video/mp4" : it.kind === "photo" ? "image/jpeg" : "audio/webm"), upsert: false, cacheControl: "3600" });
-          URL.revokeObjectURL(it.previewUrl);
-          if (error) throw error;
-          return { path, kind: it.kind, seconds: it.seconds ?? null };
-        }),
+      const [{ prepareMedia, uploadMedia }, { uploadAttachments }] = await Promise.all([
+        import("@/lib/media-upload"), import("@/lib/media-batch"),
+      ]);
+      media = await uploadAttachments(
+        attached, meId, prepareMedia, uploadMedia,
+        (paths) => supabase.storage.from("note-media").remove(paths),
+        setUploadProgress,
       );
     } catch {
-      toast.error("One of those attachments could not be delivered.");
+      toast.error("Attachments could not be delivered. Please try again; your draft is still here.");
       setBusy(false);
       return;
     }
@@ -320,8 +313,13 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
       })
       .select(COLUMNS)
       .single();
-    if (error) toast.error("That note could not be delivered.");
+    if (error) {
+      if (media.length) await supabase.storage.from("note-media").remove(media.map((item) => item.path));
+      toast.error("That note could not be delivered. Your draft is still here.");
+    }
     if (data) {
+      setDraft("");
+      clearPending();
       notifyParty("note", (data as Note).id);
       setNotes((prev) =>
         prev.some((n) => n.id === (data as Note).id) ? prev : [...prev, data as Note],
@@ -334,6 +332,8 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
     () => notes.filter((n) => !(n.hidden_for ?? []).includes(meId ?? "")),
     [notes, meId],
   );
+
+  const { scrollRef, contentRef, onScroll } = useNoteScroll(party.id, listed.at(-1)?.id ?? null);
 
   const beginPress = (note: Note) => {
     if (pressRef.current) clearTimeout(pressRef.current);
@@ -406,7 +406,8 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className={cn("flex-1 space-y-2 overflow-y-auto px-1 py-3", compact && "max-h-64")}>
+      <div ref={scrollRef} onScroll={onScroll} className={cn("min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-1 py-3", compact && "max-h-64")}>
+        <div ref={contentRef} className="space-y-2">
         {listed.length === 0 && (
           <p className="py-8 text-center text-sm text-muted-foreground">
             No notes yet. Say something.
@@ -479,7 +480,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
             </div>
           );
         })}
-        <div ref={bottomRef} />
+        </div>
       </div>
 
       <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
@@ -576,6 +577,9 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
 
 
 
+      {busy && pending.length > 0 && (
+        <p role="status" className="py-1 text-xs text-muted-foreground">Uploading… {uploadProgress}%</p>
+      )}
       {pending.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-2">
           {pending.map((p) => (
@@ -610,6 +614,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
                 size="icon"
                 variant="ghost"
                 className="h-7 w-7 shrink-0"
+                disabled={busy}
                 onClick={() => dropPending(p.previewUrl)}
                 aria-label="Discard attachment"
               >
@@ -638,6 +643,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
       >
         <input
           ref={pickRef}
+          disabled={busy}
           type="file"
           accept="image/*"
           multiple
@@ -649,6 +655,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
         />
         <input
           ref={captureRef}
+          disabled={busy}
           type="file"
           accept="image/*"
           capture="environment"
@@ -663,6 +670,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
           size="icon"
           variant="ghost"
           className="h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11"
+          disabled={busy}
           onClick={() => pickRef.current?.click()}
           aria-label="Attach a photo"
         >
@@ -670,6 +678,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
         </Button>
         <input
           ref={videoRef}
+          disabled={busy}
           type="file"
           accept="video/*"
           multiple
@@ -684,6 +693,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
           size="icon"
           variant="ghost"
           className="h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11"
+          disabled={busy}
           onClick={() => captureRef.current?.click()}
           aria-label="Take a photo"
         >
@@ -694,6 +704,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
           size="icon"
           variant="ghost"
           className="h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11"
+          disabled={busy}
           onClick={() => videoRef.current?.click()}
           aria-label="Attach a video"
         >
@@ -704,12 +715,14 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
           size="icon"
           variant={recording ? "default" : "ghost"}
           className="h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11"
+          disabled={busy}
           onClick={() => (recording ? stopRecording() : void startRecording())}
           aria-label={recording ? "Stop recording" : "Record your voice"}
         >
           {recording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
         </Button>
         <textarea
+          disabled={busy}
           value={draft}
           rows={1}
           onChange={(e) => {

@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { durationLabel } from "@/lib/talkloop";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { RotateCw } from "lucide-react";
 
 export type MediaItem = { path: string; kind: string; seconds?: number | null };
 
@@ -12,26 +14,27 @@ export function NoteMediaList({ items }: { items: MediaItem[] }) {
 
   if (items.length === 0) return null;
   if (items.length === 1) {
-    const it = items[0]!;
+    const it = items[0];
+    if (!it) return null;
     return <NoteMedia path={it.path} kind={it.kind} seconds={it.seconds} />;
   }
 
   const onScroll = () => {
     const el = trackRef.current;
-    if (!el) return;
+    if (!el || !el.clientWidth) return;
     const index = Math.round(el.scrollLeft / el.clientWidth);
     setActive(Math.max(0, Math.min(items.length - 1, index)));
   };
 
   return (
-    <div className="w-full max-w-[260px]">
+    <div className="w-[260px] max-w-full min-w-0">
       <div
         ref={trackRef}
         onScroll={onScroll}
         className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {items.map((it) => (
-          <div key={it.path} className="w-full shrink-0 snap-center">
+          <div key={it.path} className="w-full min-w-0 shrink-0 snap-center">
             <NoteMedia path={it.path} kind={it.kind} seconds={it.seconds} />
           </div>
         ))}
@@ -61,34 +64,60 @@ export function NoteMedia({
   seconds?: number | null | undefined;
 }) {
   const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-    void supabase.storage
-      .from("note-media")
-      .createSignedUrl(path, 3600)
-      .then(({ data }) => {
-        if (!cancelled) setUrl(data?.signedUrl ?? null);
-      });
+    setUrl(null);
+    setFailed(false);
+    const refresh = async () => {
+      try {
+        const { data, error } = await supabase.storage.from("note-media").createSignedUrl(path, 3600);
+        if (cancelled) return;
+        setUrl(data?.signedUrl ?? null);
+        setFailed(Boolean(error) || !data?.signedUrl);
+      } catch {
+        if (!cancelled) setFailed(true);
+      }
+    };
+    void refresh();
+    const timer = setInterval(() => void refresh(), 55 * 60 * 1000);
     return () => {
       cancelled = true;
+      clearInterval(timer);
     };
-  }, [path]);
+  }, [path, attempt]);
+
+  const frame = kind === "voice" ? "h-10 w-56 max-w-full" : "aspect-square w-[260px] max-w-full";
+
+  if (failed) {
+    return (
+      <div className={cn(frame, "flex flex-col items-center justify-center gap-2 rounded-lg bg-muted text-muted-foreground")}>
+        <span className="text-xs">Attachment unavailable</span>
+        <Button size="icon" variant="ghost" aria-label="Retry attachment" onClick={() => setAttempt((value) => value + 1)}>
+          <RotateCw className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
 
   if (!url) {
     return (
-      <div className="h-10 w-40 animate-pulse rounded-lg bg-foreground/10" aria-hidden="true" />
+      <div className={cn(frame, "animate-pulse rounded-lg bg-foreground/10")} aria-hidden="true" />
     );
   }
 
   if (kind === "photo") {
     return (
-      <a href={url} target="_blank" rel="noreferrer" className="block">
+      <a href={url} target="_blank" rel="noreferrer" className={cn(frame, "block overflow-hidden rounded-lg")}>
         <img
           src={url}
           alt="Attached photo"
-          loading="lazy"
-          className="max-h-64 w-full rounded-lg object-cover"
+          loading="eager"
+          decoding="async"
+          onError={() => setFailed(true)}
+          className="h-full w-full object-contain"
         />
       </a>
     );
@@ -112,7 +141,7 @@ function VideoPreview({ url }: { url: string }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [playing, setPlaying] = useState(false);
   return (
-    <div className="relative overflow-hidden rounded-lg">
+    <div className="relative aspect-square w-[260px] max-w-full overflow-hidden rounded-lg bg-muted">
       <video
         ref={videoRef}
         src={`${url}#t=0.001`}
@@ -122,13 +151,14 @@ function VideoPreview({ url }: { url: string }) {
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onEnded={() => setPlaying(false)}
-        className="block max-h-64 w-full bg-black object-contain"
+        className="block h-full w-full object-contain"
       />
       {playing && (
-        <button
+        <Button
           type="button"
+          variant="ghost"
           aria-label="Pause video"
-          className="absolute inset-0 cursor-pointer"
+          className="absolute inset-0 h-full w-full cursor-pointer rounded-none hover:bg-transparent"
           onClick={() => videoRef.current?.pause()}
         />
       )}
