@@ -377,6 +377,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_read_note_media: { Args: { _path: string }; Returns: boolean }
       get_profiles_public: {
         Args: { _ids: string[] }
         Returns: {
