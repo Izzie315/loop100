@@ -441,7 +441,7 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
                 )}
               >
                 {((n.media ?? []).length > 0 || (n.media_url && n.media_kind)) && (
-                  <div className="tl-att overflow-hidden rounded-xl">
+                  <div className="tl-att flex justify-center overflow-hidden rounded-xl">
 
                   <NoteMediaList
                     items={
