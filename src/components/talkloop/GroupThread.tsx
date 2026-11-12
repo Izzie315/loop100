@@ -446,6 +446,7 @@ export function GroupThread({
             ...r,
             hits: reactions.filter((x) => x.note_id === n.id && x.reaction === r.key),
           })).filter((g) => g.hits.length > 0);
+          const hasMedia = (n.media ?? []).length > 0 || Boolean(n.media_url && n.media_kind);
           return (
             <div key={n.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
               <div className="relative max-w-[78%]">
@@ -461,7 +462,7 @@ export function GroupThread({
                     setSelected(n);
                   }}
                   className={cn(
-                    "cursor-pointer select-none space-y-2 rounded-2xl px-3.5 py-2 text-sm has-[.tl-att]:p-2",
+                    "cursor-pointer select-none space-y-2 rounded-2xl px-3.5 py-2 text-sm has-[.tl-att]:w-fit has-[.tl-att]:p-2",
                     mine
                       ? "bg-primary text-primary-foreground rounded-br-sm"
                       : "bg-secondary text-secondary-foreground rounded-bl-sm",
@@ -472,20 +473,22 @@ export function GroupThread({
                       {names[n.author_id] ?? "Someone"}
                     </p>
                   )}
-                  {((n.media ?? []).length > 0 || (n.media_url && n.media_kind)) && (
+                  {hasMedia && (
                     <div className="tl-att flex justify-center overflow-hidden rounded-xl">
-
-                    <NoteMediaList
-                      items={
-                        (n.media ?? []).length > 0
-                          ? (n.media ?? [])
-                          : [{ path: n.media_url!, kind: n.media_kind!, seconds: n.media_seconds ?? null }]
-                      }
-                    />
-
+                      <NoteMediaList
+                        items={
+                          (n.media ?? []).length > 0
+                            ? (n.media ?? [])
+                            : [{ path: n.media_url!, kind: n.media_kind!, seconds: n.media_seconds ?? null }]
+                        }
+                      />
                     </div>
                   )}
-                  {n.body && <p className="whitespace-pre-wrap break-words px-1">{n.body}</p>}
+                  {n.body && (
+                    <p className={cn("whitespace-pre-wrap break-words px-1", hasMedia && "max-w-[240px]")}>
+                      {n.body}
+                    </p>
+                  )}
                   <p
                     className={cn(
                       "mt-1 text-[10px] font-mono opacity-60",
