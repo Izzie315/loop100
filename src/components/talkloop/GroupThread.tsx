@@ -461,7 +461,7 @@ export function GroupThread({
                     setSelected(n);
                   }}
                   className={cn(
-                    "cursor-pointer select-none space-y-2 rounded-2xl px-3.5 py-2 text-sm has-[.tl-att]:px-1.5 has-[.tl-att]:pt-1.5",
+                    "cursor-pointer select-none space-y-2 rounded-2xl px-3.5 py-2 text-sm has-[.tl-att]:p-2",
                     mine
                       ? "bg-primary text-primary-foreground rounded-br-sm"
                       : "bg-secondary text-secondary-foreground rounded-bl-sm",
@@ -473,7 +473,7 @@ export function GroupThread({
                     </p>
                   )}
                   {((n.media ?? []).length > 0 || (n.media_url && n.media_kind)) && (
-                    <div className="tl-att overflow-hidden rounded-xl border-2 border-primary bg-background/40 p-0.5">
+                    <div className="tl-att overflow-hidden rounded-xl">
 
                     <NoteMediaList
                       items={
