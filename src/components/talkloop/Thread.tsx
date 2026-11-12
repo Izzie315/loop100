@@ -434,13 +434,15 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
                   setSelected(n);
                 }}
                 className={cn(
-                  "cursor-pointer select-none space-y-2 rounded-2xl px-3.5 py-2 text-sm",
+                  "cursor-pointer select-none space-y-2 rounded-2xl px-3.5 py-2 text-sm has-[.tl-att]:px-1.5 has-[.tl-att]:pt-1.5",
                   mine
                     ? "bg-primary text-primary-foreground rounded-br-sm"
                     : "bg-secondary text-secondary-foreground rounded-bl-sm",
                 )}
               >
                 {((n.media ?? []).length > 0 || (n.media_url && n.media_kind)) && (
+                  <div className="tl-att overflow-hidden rounded-xl border-2 border-primary bg-background/40 p-0.5">
+
                   <NoteMediaList
                     items={
                       (n.media ?? []).length > 0
@@ -448,8 +450,10 @@ export function Thread({ party, compact = false }: { party: PublicProfile; compa
                         : [{ path: n.media_url!, kind: n.media_kind!, seconds: n.media_seconds ?? null }]
                     }
                   />
+
+                  </div>
                 )}
-                {n.body && <p className="whitespace-pre-wrap break-words">{n.body}</p>}
+                {n.body && <p className="whitespace-pre-wrap break-words px-1">{n.body}</p>}
                 <p
                   className={cn(
                     "mt-1 text-[10px] font-mono opacity-60",

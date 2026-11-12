@@ -27,7 +27,7 @@ export function NoteMediaList({ items }: { items: MediaItem[] }) {
   };
 
   return (
-    <div className="w-[260px] max-w-full min-w-0">
+    <div className="w-[240px] max-w-full min-w-0">
       <div
         ref={trackRef}
         onScroll={onScroll}
@@ -89,11 +89,11 @@ export function NoteMedia({
     };
   }, [path, attempt]);
 
-  const frame = kind === "voice" ? "h-10 w-56 max-w-full" : "aspect-square w-[260px] max-w-full";
+  const frame = kind === "voice" ? "h-10 w-56 max-w-full" : "aspect-square w-[240px] max-w-full";
 
   if (failed) {
     return (
-      <div className={cn(frame, "flex flex-col items-center justify-center gap-2 rounded-lg bg-muted text-muted-foreground")}>
+      <div className={cn(frame, "flex flex-col items-center justify-center gap-2 rounded-xl bg-muted text-muted-foreground")}>
         <span className="text-xs">Attachment unavailable</span>
         <Button size="icon" variant="ghost" aria-label="Retry attachment" onClick={() => setAttempt((value) => value + 1)}>
           <RotateCw className="h-4 w-4" />
@@ -104,13 +104,13 @@ export function NoteMedia({
 
   if (!url) {
     return (
-      <div className={cn(frame, "animate-pulse rounded-lg bg-foreground/10")} aria-hidden="true" />
+      <div className={cn(frame, "animate-pulse rounded-xl bg-foreground/10")} aria-hidden="true" />
     );
   }
 
   if (kind === "photo") {
     return (
-      <a href={url} target="_blank" rel="noreferrer" className={cn(frame, "block overflow-hidden rounded-lg")}>
+      <a href={url} target="_blank" rel="noreferrer" className={cn(frame, "block overflow-hidden rounded-xl")}>
         <img
           src={url}
           alt="Attached photo"
@@ -141,7 +141,7 @@ function VideoPreview({ url }: { url: string }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [playing, setPlaying] = useState(false);
   return (
-    <div className="relative aspect-square w-[260px] max-w-full overflow-hidden rounded-lg bg-muted">
+    <div className="relative aspect-square w-[240px] max-w-full overflow-hidden rounded-xl bg-muted">
       <video
         ref={videoRef}
         src={`${url}#t=0.001`}
