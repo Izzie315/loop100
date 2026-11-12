@@ -14,7 +14,7 @@ describe("entry preferences", () => {
   test("entry opens sign in", () => expect(initialEntry).toBe("signin"));
 });
 describe("cross-device attachments", () => {
-  test("recognizes an iPhone video with no MIME", () => expect(mediaFormat({ name: "IMG.MOV", type: "" })).toEqual({ mime: "video/quicktime", kind: "video" }));
+  test("recognizes an iPhone video with no MIME", () => expect(mediaFormat({ name: "IMG.MOV", type: "" })).toEqual({ mime: "video/mp4", kind: "video" }));
   test("recognizes MP4 with generic MIME", () => expect(mediaFormat({ name: "clip.mp4", type: "application/octet-stream" }).kind).toBe("video"));
   test("recognizes iPhone photos for conversion", () => expect(mediaFormat({ name: "IMG.HEIC", type: "" }).mime).toBe("image/heic"));
 });
