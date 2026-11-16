@@ -125,6 +125,12 @@ function RootShell({ children }: { children: ReactNode }) {
         <script
           dangerouslySetInnerHTML={{
             __html:
+              "(function(){var k='tl-reload-once';function r(){try{if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,'1')}catch(e){}location.reload()}window.addEventListener('vite:preloadError',function(e){e.preventDefault();r()});window.addEventListener('unhandledrejection',function(e){var m=String(e.reason&&e.reason.message||e.reason||'');if(/Importing a module script failed|Failed to fetch dynamically imported module|error loading dynamically imported module/i.test(m)){e.preventDefault();r()}});window.addEventListener('load',function(){setTimeout(function(){try{sessionStorage.removeItem(k)}catch(e){}},10000)})})();",
+          }}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
               "try{document.documentElement.classList.toggle('light',localStorage.getItem('tl-theme')!=='dark')}catch(e){}",
           }}
         />
