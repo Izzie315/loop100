@@ -14,6 +14,8 @@ import {
   Trash2,
   EyeOff,
   ArrowLeft,
+  CheckCircle2 as PickedIcon,
+  Circle as PickIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -336,6 +338,7 @@ export function GroupThread({
     }
     if (data) {
       setDraft("");
+      if (draftRef.current) draftRef.current.style.height = "";
       clearPending();
       notifyParty("loop", (data as LoopNote).id);
       setNotes((prev) =>
@@ -352,7 +355,28 @@ export function GroupThread({
 
   const { scrollRef, contentRef, onScroll } = useNoteScroll(loopId, listed.at(-1)?.id ?? null);
 
+  const [picking, setPicking] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(() => new Set());
+  const draftRef = useRef<HTMLTextAreaElement | null>(null);
+  const togglePick = (id: string) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const stopPicking = () => {
+    setPicking(false);
+    setPicked(new Set());
+  };
+  const removePicked = async () => {
+    const chosen = listed.filter((n) => picked.has(n.id));
+    stopPicking();
+    await Promise.all(chosen.map((n) => (n.author_id === meId ? unsend(n) : hideForMe(n))));
+  };
+
   const beginPress = (note: LoopNote) => {
+    if (picking) return;
     if (pressRef.current) clearTimeout(pressRef.current);
     pressRef.current = setTimeout(() => setSelected(note), 500);
   };
@@ -426,6 +450,29 @@ export function GroupThread({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      {listed.length > 0 && (
+        <div className="flex items-center justify-end gap-2 px-1 pt-1">
+          {picking ? (
+            <>
+              <span className="mr-auto text-xs text-muted-foreground">{picked.size} chosen</span>
+              <Button type="button" size="sm" variant="ghost" onClick={stopPicking}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                disabled={picked.size === 0}
+                onClick={() => void removePicked()}
+              >
+                Delete
+              </Button>
+            </>
+          ) : (
+            <Button type="button" size="sm" variant="ghost" onClick={() => setPicking(true)}>
+              Select
+            </Button>
+          )}
       <div className="flex items-center gap-2 pb-1">
         <Button size="icon" variant="ghost" className="h-9 w-9" onClick={onBack} aria-label="Back">
           <ArrowLeft className="h-4 w-4" />
@@ -448,7 +495,25 @@ export function GroupThread({
           })).filter((g) => g.hits.length > 0);
           const hasMedia = (n.media ?? []).length > 0 || Boolean(n.media_url && n.media_kind);
           return (
-            <div key={n.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
+            <div
+              key={n.id}
+              className={cn("flex items-center gap-2", mine ? "justify-end" : "justify-start")}
+              onClickCapture={(e) => {
+                if (!picking) return;
+                e.preventDefault();
+                e.stopPropagation();
+                togglePick(n.id);
+              }}
+            >
+              {picking && (
+                <span className="order-first shrink-0 text-primary" aria-hidden="true">
+                  {picked.has(n.id) ? (
+                    <PickedIcon className="h-6 w-6 fill-primary text-primary-foreground" />
+                  ) : (
+                    <PickIcon className="h-6 w-6 text-muted-foreground" />
+                  )}
+                </span>
+              )}
               <div className="relative max-w-[78%]">
                 <div
                   role="button"
@@ -760,6 +825,7 @@ export function GroupThread({
           {recording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
         </Button>
         <textarea
+          ref={draftRef}
           disabled={busy}
           value={draft}
           rows={1}
