@@ -459,6 +459,7 @@ export function GroupThread({
                   onPointerCancel={endPress}
                   onContextMenu={(e) => {
                     e.preventDefault();
+                    if (picking) return;
                     setSelected(n);
                   }}
                   className={cn(
