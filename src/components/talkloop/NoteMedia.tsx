@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { supabase } from "@/integrations/supabase/client";
+import { cachedMediaUrl, signedMediaUrl } from "@/lib/signed-media";
 import { durationLabel } from "@/lib/talkloop";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -63,26 +63,21 @@ export function NoteMedia({
   kind: string;
   seconds?: number | null | undefined;
 }) {
-  const [url, setUrl] = useState<string | null>(null);
+  const [url, setUrl] = useState<string | null>(() => cachedMediaUrl(path));
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-    setUrl(null);
     setFailed(false);
-    const refresh = async () => {
-      try {
-        const { data, error } = await supabase.storage.from("note-media").createSignedUrl(path, 3600);
+    const refresh = (fresh: boolean) =>
+      signedMediaUrl(path, fresh).then((next) => {
         if (cancelled) return;
-        setUrl(data?.signedUrl ?? null);
-        setFailed(Boolean(error) || !data?.signedUrl);
-      } catch {
-        if (!cancelled) setFailed(true);
-      }
-    };
-    void refresh();
-    const timer = setInterval(() => void refresh(), 55 * 60 * 1000);
+        setUrl(next);
+        setFailed(!next);
+      });
+    void refresh(attempt > 0);
+    const timer = setInterval(() => void refresh(true), 50 * 60 * 1000);
     return () => {
       cancelled = true;
       clearInterval(timer);
@@ -110,21 +105,21 @@ export function NoteMedia({
 
   if (kind === "photo") {
     return (
-      <a href={url} target="_blank" rel="noreferrer" className={cn(frame, "block overflow-hidden rounded-xl")}>
+      <a href={url} target="_blank" rel="noreferrer" className={cn(frame, "block overflow-hidden rounded-xl bg-muted")}>
         <img
           src={url}
           alt="Attached photo"
-          loading="eager"
+          loading="lazy"
           decoding="async"
           onError={() => setFailed(true)}
-          className="h-full w-full object-contain"
+          className="h-full w-full rounded-xl object-cover"
         />
       </a>
     );
   }
 
   if (kind === "video") {
-    return <VideoPreview url={url} />;
+    return <VideoPreview url={url} onFail={() => setFailed(true)} />;
   }
 
   return (
@@ -137,7 +132,7 @@ export function NoteMedia({
   );
 }
 
-function VideoPreview({ url }: { url: string }) {
+function VideoPreview({ url, onFail }: { url: string; onFail: () => void }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [playing, setPlaying] = useState(false);
   return (
@@ -151,7 +146,8 @@ function VideoPreview({ url }: { url: string }) {
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onEnded={() => setPlaying(false)}
-        className="block h-full w-full object-contain"
+        onError={onFail}
+        className="block h-full w-full rounded-xl object-contain"
       />
       {playing && (
         <Button
