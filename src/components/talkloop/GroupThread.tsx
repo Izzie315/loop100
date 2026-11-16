@@ -473,6 +473,8 @@ export function GroupThread({
               Select
             </Button>
           )}
+        </div>
+      )}
       <div className="flex items-center gap-2 pb-1">
         <Button size="icon" variant="ghost" className="h-9 w-9" onClick={onBack} aria-label="Back">
           <ArrowLeft className="h-4 w-4" />
