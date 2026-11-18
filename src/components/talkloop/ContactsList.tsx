@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { NewNoteStarter } from "@/components/talkloop/NewNoteStarter";
 import { useCall } from "@/hooks/useCall";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,7 +35,7 @@ export function ContactsList({
 }: {
   contacts: ContactEntry[];
   onChanged: () => void;
-  onNote: (party: ContactEntry) => void;
+  onNote: (party: PublicProfile) => void;
 }) {
   const { account } = useAuth();
   const { startCall } = useCall();
@@ -140,6 +141,8 @@ export function ContactsList({
           <Plus className="h-5 w-5" />
         </Button>
       </div>
+
+      <NewNoteStarter onPick={onNote} />
 
       {contacts.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-16 text-center">
