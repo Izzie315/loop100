@@ -400,6 +400,15 @@ export type Database = {
           talkloop_number: string
         }[]
       }
+      search_profiles_by_name: {
+        Args: { _query: string }
+        Returns: {
+          first_name: string
+          id: string
+          last_name: string
+          talkloop_number: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
