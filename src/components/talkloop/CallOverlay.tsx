@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Mic, MicOff, NotebookPen, Phone, PhoneOff, X } from "lucide-react";
+import { Mic, MicOff, Phone, PhoneOff, X } from "lucide-react";
+import { SpeechBubble } from "@/components/talkloop/SpeechBubble";
 
 import { useCall } from "@/hooks/useCall";
 import { Button } from "@/components/ui/button";
@@ -101,7 +102,7 @@ export function CallOverlay() {
               disabled={phase !== "active"}
               aria-label="Notes during call"
             >
-              <NotebookPen className="h-5 w-5" />
+              <SpeechBubble className="h-5 w-5" />
             </Button>
           </>
         )}

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { NotebookPen, Pencil, Phone, Plus, Trash2, Users as GroupIcon } from "lucide-react";
+import { Pencil, Phone, Plus, Trash2, Users as GroupIcon } from "lucide-react";
+import { SpeechBubble } from "@/components/talkloop/SpeechBubble";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -194,7 +195,7 @@ export function ContactsList({
                     onClick={() => onNote(c)}
                     aria-label={`Leave a note for ${contactName(c)}`}
                   >
-                    <NotebookPen className="h-4 w-4" />
+                    <SpeechBubble className="h-4 w-4" />
                   </Button>
                   <Button
                     size="icon"

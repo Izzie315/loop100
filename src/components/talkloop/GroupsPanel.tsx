@@ -15,9 +15,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { GroupThread } from "@/components/talkloop/GroupThread";
+import { findByNumber } from "@/components/talkloop/NewNoteStarter";
 import { cn } from "@/lib/utils";
 import {
   contactName,
+  formatNumber,
   fullName,
   type ContactEntry,
   type PublicProfile,
@@ -32,6 +34,9 @@ export function GroupsPanel({ contacts }: { contacts: ContactEntry[] }) {
   const [name, setName] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [extra, setExtra] = useState<PublicProfile[]>([]);
+  const [addNumber, setAddNumber] = useState("");
+  const [finding, setFinding] = useState(false);
   const [memberNames, setMemberNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -109,6 +114,7 @@ export function GroupsPanel({ contacts }: { contacts: ContactEntry[] }) {
     setCreating(false);
     setName("");
     setPicked([]);
+    setExtra([]);
     await load();
     setOpen(data as Loop);
   };
@@ -180,10 +186,54 @@ export function GroupsPanel({ contacts }: { contacts: ContactEntry[] }) {
             <div className="space-y-1.5">
               <Label>Who is in it</Label>
               <p className="text-xs text-muted-foreground">You are always included.</p>
+              <form
+                className="flex items-center gap-2"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setFinding(true);
+                  const found = await findByNumber(addNumber, profile?.id);
+                  setFinding(false);
+                  if (!found) return;
+                  if (!contacts.some((c) => c.id === found.id)) {
+                    setExtra((prev) => (prev.some((p) => p.id === found.id) ? prev : [...prev, found]));
+                  }
+                  setPicked((prev) => (prev.includes(found.id) ? prev : [...prev, found.id]));
+                  setAddNumber("");
+                }}
+              >
+                <Input
+                  inputMode="numeric"
+                  value={addNumber}
+                  onChange={(e) => setAddNumber(formatNumber(e.target.value))}
+                  placeholder="Add by number"
+                  className="bg-muted font-mono"
+                  aria-label="Add by TalkLoop number"
+                />
+                <Button type="submit" variant="secondary" disabled={finding}>
+                  Add
+                </Button>
+              </form>
               <div className="max-h-52 space-y-1 overflow-y-auto rounded-xl border border-border p-2">
-                {contacts.length === 0 && (
+                {extra.map((p) => (
+                  <label
+                    key={p.id}
+                    className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-secondary"
+                  >
+                    <Checkbox
+                      checked={picked.includes(p.id)}
+                      onCheckedChange={(v) =>
+                        setPicked((prev) =>
+                          v ? [...prev, p.id] : prev.filter((id) => id !== p.id),
+                        )
+                      }
+                    />
+                    <span className="min-w-0 flex-1 truncate text-sm">{fullName(p)}</span>
+                    <span className="font-mono text-[10px] text-muted-foreground">{p.talkloop_number}</span>
+                  </label>
+                ))}
+                {contacts.length === 0 && extra.length === 0 && (
                   <p className="px-2 py-1 text-xs text-muted-foreground">
-                    Save some contacts first.
+                    Add people by number above, or save some contacts.
                   </p>
                 )}
                 {contacts.map((c) => (

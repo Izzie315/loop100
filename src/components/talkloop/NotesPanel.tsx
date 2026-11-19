@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, NotebookPen, Phone } from "lucide-react";
+import { ArrowLeft, Phone } from "lucide-react";
+import { SpeechBubble } from "@/components/talkloop/SpeechBubble";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -120,7 +121,7 @@ export function NotesPanel({
     return (
       <div>
         <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <NotebookPen className="h-8 w-8 text-muted-foreground" />
+          <SpeechBubble className="h-8 w-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
             No notes yet. Start one from the Contacts tab.
           </p>

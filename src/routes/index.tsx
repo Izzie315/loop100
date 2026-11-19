@@ -4,11 +4,11 @@ import {
   Clock,
   Grid3x3,
   LogOut,
-  NotebookPen,
   Pencil,
   Users as GroupIcon,
   UsersRound,
 } from "lucide-react";
+import { SpeechBubble } from "@/components/talkloop/SpeechBubble";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -228,9 +228,9 @@ function TalkLoopApp() {
     void loadContacts();
   }, [loadContacts]);
 
-  const tabs: { id: Tab; label: string; icon: typeof Grid3x3 }[] = [
+  const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: "keypad", label: "Keypad", icon: Grid3x3 },
-    { id: "notes", label: "Notes", icon: NotebookPen },
+    { id: "notes", label: "Notes", icon: SpeechBubble },
     { id: "contacts", label: "Contacts", icon: GroupIcon },
     { id: "loops", label: "Loops", icon: UsersRound },
     { id: "history", label: "Recents", icon: Clock },
