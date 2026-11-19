@@ -46,6 +46,7 @@ export function ContactsList({
   const [memo, setMemo] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const [removing, setRemoving] = useState<ContactEntry | null>(null);
   const [adding, setAdding] = useState(false);
   const [newNumber, setNewNumber] = useState("");
   const [newName, setNewName] = useState("");
@@ -209,7 +210,7 @@ export function ContactsList({
                     size="icon"
                     variant="ghost"
                     className="h-9 w-9 rounded-full text-muted-foreground"
-                    onClick={() => void remove(c.id)}
+                    onClick={() => setRemoving(c)}
                     aria-label={`Remove ${contactName(c)}`}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -219,6 +220,31 @@ export function ContactsList({
             </ul>
           </section>
         ))}
+
+      <Dialog open={removing !== null} onOpenChange={(open) => !open && setRemoving(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete this contact?</DialogTitle>
+            <DialogDescription>
+              {removing ? contactName(removing) : ""} will be permanently removed from your contacts.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="secondary" onClick={() => setRemoving(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (removing) void remove(removing.id);
+                setRemoving(null);
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={adding} onOpenChange={(open) => !open && setAdding(false)}>
         <DialogContent className="max-w-sm">

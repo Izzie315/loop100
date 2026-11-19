@@ -22,8 +22,13 @@ import {
   formatNumber,
   fullName,
   type ContactEntry,
+  timeLabel,
   type PublicProfile,
 } from "@/lib/talkloop";
+
+function groupInitials(name: string): string {
+  return name.split(/\s+/).filter(Boolean).slice(0, 3).map((w) => w[0]).join("").toUpperCase();
+}
 
 type Loop = { id: string; name: string; owner_id: string; created_at: string };
 export function GroupsPanel({ contacts }: { contacts: ContactEntry[] }) {
@@ -88,7 +93,7 @@ export function GroupsPanel({ contacts }: { contacts: ContactEntry[] }) {
   const create = async () => {
     if (!profile || busy) return;
     if (!name.trim()) {
-      toast.error("Give the loop a name.");
+      toast.error("Give the group a name.");
       return;
     }
     setBusy(true);
@@ -99,7 +104,7 @@ export function GroupsPanel({ contacts }: { contacts: ContactEntry[] }) {
       .single();
     if (error || !data) {
       setBusy(false);
-      toast.error("Could not create that loop.");
+      toast.error("Could not create that group.");
       return;
     }
     const members = Array.from(new Set([profile.id, ...picked])).map((id) => ({
@@ -109,7 +114,7 @@ export function GroupsPanel({ contacts }: { contacts: ContactEntry[] }) {
     const { error: memberError } = await supabase.from("group_members").insert(members);
     setBusy(false);
     if (memberError) {
-      toast.error("The loop was made but some people could not be added.");
+      toast.error("The group was made but some people could not be added.");
     }
     setCreating(false);
     setName("");
@@ -138,7 +143,7 @@ export function GroupsPanel({ contacts }: { contacts: ContactEntry[] }) {
           size="icon"
           className="h-9 w-9 rounded-full"
           onClick={() => setCreating(true)}
-          aria-label="Start a loop"
+          aria-label="Start a group"
         >
           <Plus className="h-4 w-4" />
         </Button>
@@ -146,21 +151,26 @@ export function GroupsPanel({ contacts }: { contacts: ContactEntry[] }) {
 
       {loops.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No loops yet. Tap the plus to start one with as many people as you like.
+          No groups yet. Tap the plus to start one with as many people as you like.
         </p>
       ) : (
-        <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
+        <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto pb-6 pr-1">
           {loops.map((l) => (
             <li key={l.id}>
               <button
                 type="button"
                 onClick={() => setOpen(l)}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-secondary"
+                className="panel flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-accent"
               >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent font-mono text-xs text-primary">
-                  {l.name.slice(0, 2).toUpperCase()}
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">
+                  {groupInitials(l.name)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{l.name}</p>
+                </div>
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  {timeLabel(l.created_at)}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-sm">{l.name}</span>
               </button>
             </li>
           ))}
@@ -170,11 +180,11 @@ export function GroupsPanel({ contacts }: { contacts: ContactEntry[] }) {
       <Dialog open={creating} onOpenChange={setCreating}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Start a loop</DialogTitle>
+            <DialogTitle>Start a group</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="loopname">Loop name</Label>
+              <Label htmlFor="loopname">Group name</Label>
               <Input
                 id="loopname"
                 value={name}
@@ -255,7 +265,7 @@ export function GroupsPanel({ contacts }: { contacts: ContactEntry[] }) {
               </div>
             </div>
             <Button className="h-11 w-full" onClick={() => void create()} disabled={busy}>
-              Create loop
+              Create group
             </Button>
           </div>
         </DialogContent>

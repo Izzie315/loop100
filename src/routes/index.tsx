@@ -6,9 +6,8 @@ import {
   LogOut,
   Pencil,
   Users as GroupIcon,
-  UsersRound,
 } from "lucide-react";
-import { SpeechBubble } from "@/components/talkloop/SpeechBubble";
+import { SpeechBubble, SpeechBubbles } from "@/components/talkloop/SpeechBubble";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -232,7 +231,7 @@ function TalkLoopApp() {
     { id: "keypad", label: "Keypad", icon: Grid3x3 },
     { id: "notes", label: "Notes", icon: SpeechBubble },
     { id: "contacts", label: "Contacts", icon: GroupIcon },
-    { id: "loops", label: "Loops", icon: UsersRound },
+    { id: "loops", label: "Groups", icon: SpeechBubbles },
     { id: "history", label: "Recents", icon: Clock },
   ];
 
