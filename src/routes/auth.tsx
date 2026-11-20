@@ -32,25 +32,51 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+type Mode = "signup" | "signin" | "reset";
+
 function AuthPage() {
   const navigate = useNavigate();
   const { account, loading } = useAuth();
-  const [mode, setMode] = useState<"signup" | "signin">(initialEntry);
+  const [mode, setMode] = useState<Mode>(initialEntry);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [number, setNumber] = useState("");
   const [busy, setBusy] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   useEffect(() => {
     if (!loading && account) void navigate({ to: "/" });
   }, [account, loading, navigate]);
 
+  const switchMode = (next: Mode) => {
+    setResetSent(false);
+    setMode(next);
+  };
+
+  const requestReset = async () => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setBusy(false);
+    if (error) {
+      toast.error("Could not deliver that reset link.");
+      return;
+    }
+    setResetSent(true);
+    toast.success("Check your email for a reset link.");
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (busy) return;
     setBusy(true);
+
+    if (mode === "reset") {
+      await requestReset();
+      return;
+    }
 
     if (mode === "signin") {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -139,109 +165,154 @@ function AuthPage() {
     void navigate({ to: "/" });
   };
 
+  const heading =
+    mode === "signup" ? "Claim your number" : mode === "reset" ? "Reset your password" : "Welcome back";
+
+  const blurb =
+    mode === "signup"
+      ? "Pick a TalkLoop number and start calling."
+      : mode === "reset"
+        ? "We'll deliver a reset link to your email."
+        : "Sign in to pick up where you left off.";
+
+  const submitLabel =
+    mode === "signup" ? "Create account" : mode === "reset" ? "Deliver reset link" : "Sign in";
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-5 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <p className="font-mono text-[10px] tracking-[0.45em] text-primary">TALKLOOP</p>
-          <h1 className="mt-3 text-3xl font-bold">
-            {mode === "signup" ? "Claim your number" : "Welcome back"}
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {mode === "signup"
-              ? "Pick a TalkLoop number and start calling."
-              : "Sign in to pick up where you left off."}
-          </p>
+          <h1 className="mt-3 text-3xl font-bold">{heading}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{blurb}</p>
         </div>
 
-        <form onSubmit={submit} className="panel space-y-4 p-5">
-          {mode === "signup" && (
-            <>
-              <div className="grid grid-cols-2 gap-3">
+        {mode === "reset" && resetSent ? (
+          <div className="panel space-y-4 p-5">
+            <p className="text-sm text-muted-foreground">
+              If that address has a TalkLoop account, a reset link is on its way. Open it to choose
+              a new password.
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-11 w-full"
+              onClick={() => switchMode("signin")}
+            >
+              Back to sign in
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={submit} className="panel space-y-4 p-5">
+            {mode === "signup" && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="first">First name</Label>
+                    <Input
+                      id="first"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className="bg-muted"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="last">Last name</Label>
+                    <Input
+                      id="last"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className="bg-muted"
+                      required
+                    />
+                  </div>
+                </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="first">First name</Label>
+                  <Label htmlFor="number">Your TalkLoop number</Label>
                   <Input
-                    id="first"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    className="bg-muted"
+                    id="number"
+                    inputMode="numeric"
+                    value={number}
+                    onChange={(e) => setNumber(formatNumber(e.target.value))}
+                    placeholder="(317) 555-0142"
+                    className="bg-muted font-mono"
                     required
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="last">Last name</Label>
-                  <Input
-                    id="last"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    className="bg-muted"
-                    required
-                  />
-                </div>
-              </div>
+              </>
+            )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="bg-muted"
+                required
+              />
+            </div>
+            {mode !== "reset" && (
               <div className="space-y-1.5">
-                <Label htmlFor="number">Your TalkLoop number</Label>
+                <Label htmlFor="password">Password</Label>
                 <Input
-                  id="number"
-                  inputMode="numeric"
-                  value={number}
-                  onChange={(e) => setNumber(formatNumber(e.target.value))}
-                  placeholder="(317) 555-0142"
-                  className="bg-muted font-mono"
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="bg-muted"
+                  minLength={6}
                   required
                 />
               </div>
-            </>
-          )}
+            )}
 
-          <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="bg-muted"
-              required
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="bg-muted"
-              minLength={6}
-              required
-            />
-          </div>
+            <Button type="submit" className="h-11 w-full" disabled={busy}>
+              {busy ? "Working…" : submitLabel}
+            </Button>
 
-          <Button type="submit" className="h-11 w-full" disabled={busy}>
-            {mode === "signup" ? "Create account" : "Sign in"}
-          </Button>
+            {mode === "signin" && (
+              <Button
+                type="button"
+                variant="link"
+                className="h-auto w-full p-0 text-sm text-muted-foreground hover:text-primary"
+                onClick={() => switchMode("reset")}
+              >
+                Forgot your password?
+              </Button>
+            )}
 
-          <Button
-            type="button"
-            variant="secondary"
-            className="h-11 w-full"
-            onClick={() => void googleSignIn()}
-          >
-            Continue with Google
-          </Button>
+            {mode !== "reset" && (
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-11 w-full"
+                onClick={() => void googleSignIn()}
+              >
+                Continue with Google
+              </Button>
+            )}
 
-          <p className="pt-1 text-center text-sm text-muted-foreground">
-            {mode === "signup" ? "Already on TalkLoop?" : "New here?"}{" "}
-            <button
-              type="button"
-              className="text-primary underline-offset-4 hover:underline"
-              onClick={() => setMode(mode === "signup" ? "signin" : "signup")}
-            >
-              {mode === "signup" ? "Sign in" : "Create an account"}
-            </button>
-          </p>
-        </form>
+            <p className="pt-1 text-center text-sm text-muted-foreground">
+              {mode === "signup"
+                ? "Already on TalkLoop?"
+                : mode === "reset"
+                  ? "Remembered it?"
+                  : "New here?"}{" "}
+              <button
+                type="button"
+                className="text-primary underline-offset-4 hover:underline"
+                onClick={() =>
+                  switchMode(mode === "signup" ? "signin" : mode === "reset" ? "signin" : "signup")
+                }
+              >
+                {mode === "signup" ? "Sign in" : mode === "reset" ? "Back to sign in" : "Create an account"}
+              </button>
+            </p>
+          </form>
+        )}
       </div>
     </main>
   );
